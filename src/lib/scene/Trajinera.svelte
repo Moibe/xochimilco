@@ -242,15 +242,17 @@
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   });
 
-  // Name banner, hung just under the apex — same canvas-texture trick as
+  // Name banner, hung high in the arch — same canvas-texture trick as
   // ContainerShip's hull nameplate.
   //
-  // Rendered as TWO back-to-back single-sided planes rather than one
-  // DoubleSide plane. A double-sided plane shows the very same texels from
-  // behind, which means the lettering comes out mirrored to anyone looking at
-  // the arch from the bow — and the bow is the side people photograph. Two
-  // planes, the rear one turned 180° about Y, put a correctly-reading face
-  // toward each direction.
+  // ONE double-sided plane, turned 180° about Y so its readable face looks
+  // forward over the bow, which is the side the name is painted for. Seen from
+  // the benches it comes out mirrored, and that is correct: a painted board has
+  // a front and a back, and from behind you are looking at the back of the
+  // lettering. It was already double-sided before; the actual bug was that the
+  // plane's readable face pointed aft, so the bow — the side people photograph
+  // — got the mirrored one. Making BOTH faces read correctly was the wrong fix:
+  // no physical sign does that.
   const namePlate = (() => {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
@@ -274,7 +276,7 @@
     const texture = new CanvasTexture(canvas);
     texture.colorSpace = SRGBColorSpace;
     texture.needsUpdate = true;
-    const material = new MeshBasicMaterial({ map: texture, transparent: true });
+    const material = new MeshBasicMaterial({ map: texture, transparent: true, side: DoubleSide });
     const width = ARCH_RADIUS * 1.35;
     const height = (width * canvas.height) / canvas.width;
     const geometry = new PlaneGeometry(width, height);
@@ -285,8 +287,6 @@
     const y = ARCH_BASE_Y + ARCH_RADIUS * 0.55;
     return { geometry, material, y };
   })();
-  /** Half the gap between the two banner faces — enough to never z-fight. */
-  const PLATE_GAP = 0.012;
 
   // ---- toldo: the striped canvas awning over the passenger benches --------
   const ROOF_Y = DECK_Y + 1.65;
@@ -397,12 +397,7 @@
   <T.Mesh
     geometry={namePlate.geometry}
     material={namePlate.material}
-    position={[0, namePlate.y, ARCH_Z + PLATE_GAP]}
-  />
-  <T.Mesh
-    geometry={namePlate.geometry}
-    material={namePlate.material}
-    position={[0, namePlate.y, ARCH_Z - PLATE_GAP]}
+    position={[0, namePlate.y, ARCH_Z]}
     rotation={[0, Math.PI, 0]}
   />
 
