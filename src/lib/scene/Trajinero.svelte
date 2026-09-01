@@ -14,6 +14,7 @@
     EYES,
     LASHES,
     HEAD_Y_STANDING,
+    HIP_CENTRE_Y,
     HIP_X,
     HIP_Y,
     MOUTH_POSITION,
@@ -27,6 +28,7 @@
     eyeGeometry,
     lashGeometry,
     handGeometry,
+    hipGeometry,
     hairCapGeometry,
     headGeometry,
     legGeometry,
@@ -85,8 +87,22 @@
   /** Light enough not to read as a black line against this palette. */
   const WOOD = new MeshStandardMaterial({ color: '#8a6540', roughness: 0.85 });
 
-  /** Pose a capsule (built along +Y) to run from one point to another. */
-  function poseLimb(from: Vector3, to: Vector3) {
+  /**
+   * Pose a limb (built along +Y) to run from one point to another.
+   *
+   * `restLength` is the geometry's own length and MUST match the part being
+   * posed — this used to hardcode the arm's 0.253 and then pose the legs with
+   * it too, stretching a 0.333 m leg to 0.47 m. It went unnoticed because the
+   * overshoot hid inside the torso at one end and inside the shoe at the other.
+   *
+   * `yOffset` is the frame the mesh is rendered in. Arms hang inside the
+   * leaning `upperBody` group and so are baked waist-relative; the legs are
+   * rendered OUTSIDE it (they must not lean) and are in figure space. Applying
+   * the waist offset to both — which this used to do unconditionally — buried
+   * his legs 0.46 m under the deck, leaving a torso apparently sitting on the
+   * planks.
+   */
+  function poseLimb(from: Vector3, to: Vector3, restLength: number, yOffset = 0) {
     const dir = new Vector3().subVectors(to, from);
     const mid = new Vector3().addVectors(from, to).multiplyScalar(0.5);
     const quat = new Quaternion().setFromUnitVectors(
@@ -95,11 +111,13 @@
     );
     const e = new Euler().setFromQuaternion(quat);
     return {
-      position: [mid.x, mid.y - WAIST_Y, mid.z] as [number, number, number],
+      position: [mid.x, mid.y - yOffset, mid.z] as [number, number, number],
       rotation: [e.x, e.y, e.z] as [number, number, number],
-      scale: [1, dir.length() / 0.253, 1] as [number, number, number],
+      scale: [1, dir.length() / restLength, 1] as [number, number, number],
     };
   }
+  const ARM_REST = 0.253;
+  const LEG_REST = 0.332;
 
   // ---- hands on the pole, arms solved to reach them -----------------------
   // The hands sit exactly ON the pole's axis at mid-stroke and stay put while
@@ -117,12 +135,12 @@
     throw new Error('Trajinero: el brazo no alcanza el agarre — GRIP/hombros/POLE_OUT desajustados');
   }
 
-  const armL = poseLimb(shoulderL, upperHand);
-  const armR = poseLimb(shoulderR, lowerHand);
+  const armL = poseLimb(shoulderL, upperHand, ARM_REST, WAIST_Y);
+  const armR = poseLimb(shoulderR, lowerHand, ARM_REST, WAIST_Y);
 
   // ---- legs: a braced punting stance, right foot forward -------------------
-  const legR = poseLimb(new Vector3(HIP_X, HIP_Y, -0.01), new Vector3(HIP_X + 0.01, 0.1, -0.06));
-  const legL = poseLimb(new Vector3(-HIP_X, HIP_Y, 0.01), new Vector3(-HIP_X - 0.01, 0.1, 0.06));
+  const legR = poseLimb(new Vector3(HIP_X, HIP_Y, -0.01), new Vector3(HIP_X + 0.012, 0.095, -0.055), LEG_REST);
+  const legL = poseLimb(new Vector3(-HIP_X, HIP_Y, 0.01), new Vector3(-HIP_X - 0.012, 0.095, 0.055), LEG_REST);
 
   // ---- the vara ------------------------------------------------------------
   const poleGeometry = new CylinderGeometry(0.026, 0.032, POLE_LENGTH, 10);
@@ -158,10 +176,11 @@
 </script>
 
 <T.Group bind:ref={figure}>
+  <T.Mesh geometry={hipGeometry} material={PANTS} position={[0, HIP_CENTRE_Y, 0]} />
   <T.Mesh geometry={legGeometry} material={PANTS} position={legR.position} rotation={legR.rotation} scale={legR.scale} castShadow />
   <T.Mesh geometry={legGeometry} material={PANTS} position={legL.position} rotation={legL.rotation} scale={legL.scale} castShadow />
-  <T.Mesh geometry={shoeGeometry} material={SHOE} position={[HIP_X + 0.01, 0.045, -0.09]} />
-  <T.Mesh geometry={shoeGeometry} material={SHOE} position={[-HIP_X - 0.01, 0.045, 0.03]} />
+  <T.Mesh geometry={shoeGeometry} material={SHOE} position={[HIP_X + 0.012, 0.042, -0.085]} />
+  <T.Mesh geometry={shoeGeometry} material={SHOE} position={[-HIP_X - 0.012, 0.042, 0.035]} />
 
   <T.Group bind:ref={upperBody} position={[0, WAIST_Y, 0]}>
     <T.Mesh geometry={torsoGeometry} material={SHIRT} position={[0, -WAIST_Y, 0]} castShadow />

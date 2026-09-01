@@ -7,6 +7,7 @@
     LASHES,
     HAIR_SIDES,
     HEAD_Y_STANDING,
+    HIP_CENTRE_Y,
     HIP_X,
     HIP_Y,
     MOUTH_POSITION,
@@ -23,6 +24,7 @@
     hairLongGeometry,
     hairSideGeometry,
     handGeometry,
+    hipGeometry,
     headGeometry,
     legGeometry,
     mouthGeometry,
@@ -100,15 +102,16 @@
     new Vector3(-SHOULDER_X - 0.035, 0.5, 0.0),
     0.253
   );
-  const legR = poseLimb(new Vector3(HIP_X, HIP_Y, 0), new Vector3(HIP_X, 0.1, 0), 0.332);
-  const legL = poseLimb(new Vector3(-HIP_X, HIP_Y, 0), new Vector3(-HIP_X, 0.1, 0), 0.332);
+  const legR = poseLimb(new Vector3(HIP_X, HIP_Y, 0), new Vector3(HIP_X, 0.095, 0), 0.332);
+  const legL = poseLimb(new Vector3(-HIP_X, HIP_Y, 0), new Vector3(-HIP_X, 0.095, 0), 0.332);
 </script>
 
 <T.Group>
+  <T.Mesh geometry={hipGeometry} material={PANTS} position={[0, HIP_CENTRE_Y, 0]} />
   <T.Mesh geometry={legGeometry} material={PANTS} position={legR.position} rotation={legR.rotation} scale={legR.scale} />
   <T.Mesh geometry={legGeometry} material={PANTS} position={legL.position} rotation={legL.rotation} scale={legL.scale} />
-  <T.Mesh geometry={shoeGeometry} material={SHOE} position={[HIP_X, 0.045, -0.02]} />
-  <T.Mesh geometry={shoeGeometry} material={SHOE} position={[-HIP_X, 0.045, -0.02]} />
+  <T.Mesh geometry={shoeGeometry} material={SHOE} position={[HIP_X, 0.042, -0.02]} />
+  <T.Mesh geometry={shoeGeometry} material={SHOE} position={[-HIP_X, 0.042, -0.02]} />
 
   <T.Mesh geometry={torsoGeometry} material={SHIRT} />
   <T.Mesh geometry={armGeometry} material={SKIN} position={armR.position} rotation={armR.rotation} scale={armR.scale} />

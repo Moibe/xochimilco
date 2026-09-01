@@ -232,9 +232,41 @@ export const torsoSeatedGeometry = new LatheGeometry(
  *  band down to the origin and it floats off as a loose disc. */
 export const sashGeometry = new CylinderGeometry(0.193, 0.186, 0.075, 28, 1, true);
 
-/** Limbs are capsules — rounded ends mean no joint ever shows a hard rim. */
+/** Arms stay capsules — rounded ends mean no joint ever shows a hard rim. */
 export const armGeometry = new CapsuleGeometry(0.049, 0.155, 4, 12);
-export const legGeometry = new CapsuleGeometry(0.066, 0.2, 4, 12);
+
+/**
+ * The seat of the trousers: the piece that makes them a GARMENT instead of two
+ * tubes hanging under a shirt. It flares out from under the shirt hem, carries
+ * the hips, and closes at the crotch, so the legs emerge from something rather
+ * than floating.
+ *
+ * Centred on its own origin (spanning y ±0.088) so each pose can drop it at
+ * whatever hip height it has — standing and seated sit at very different ones.
+ */
+export const hipGeometry = new LatheGeometry(
+  profile([
+    [0.0, 0.088], [0.09, 0.088], [0.115, 0.078], [0.148, 0.058], [0.168, 0.025],
+    [0.174, -0.02], [0.168, -0.05], [0.14, -0.078], [0.08, -0.095], [0.0, -0.1],
+  ]),
+  26
+);
+
+/**
+ * A trouser leg: tapered from thigh to ankle with a rounded end, not the
+ * uniform capsule it used to be. Straight tubes of a single radius are most of
+ * why the old legs read as pipes — real trousers narrow as they fall.
+ *
+ * Built centred on the origin and 0.333 long overall, matching the capsule it
+ * replaces, so every existing `poseLimb(..., 0.332)` call still scales it right.
+ */
+export const legGeometry = new LatheGeometry(
+  profile([
+    [0.0, 0.166], [0.048, 0.163], [0.072, 0.15], [0.075, 0.1], [0.073, 0.02],
+    [0.069, -0.06], [0.065, -0.12], [0.06, -0.15], [0.042, -0.163], [0.0, -0.167],
+  ]),
+  22
+);
 export const handGeometry = superellipsoid({ x: 0.05, y: 0.052, z: 0.05 }, 2.6, 14, 12);
 /** Shoes: a rounded wedge, longer than wide, like the reference sneakers. */
 export const shoeGeometry = superellipsoid({ x: 0.072, y: 0.045, z: 0.115 }, 3.2, 18, 14);
@@ -243,8 +275,19 @@ export const SHOULDER_Y = 0.73;
 /** On the torso's surface at shoulder height, so arms emerge rather than
  *  sprouting from inside the chest. */
 export const SHOULDER_X = 0.17;
-export const HIP_Y = 0.46;
-export const HIP_X = 0.09;
+/** Where a standing leg starts — up INSIDE the hip mass, so no join shows. */
+export const HIP_Y = 0.42;
+/**
+ * Legs this close leave only a narrow gap between them, which is the crotch
+ * line the reference has. Their outer edge (0.082 + 0.075 = 0.157) also sits
+ * clearly INSIDE the hip's 0.174: when the two were nearly the same width
+ * their surfaces crossed almost parallel and shimmered as a bright seam right
+ * across the thighs. Now the hip plainly contains them until it tapers away
+ * at the crotch and lets them separate.
+ */
+export const HIP_X = 0.082;
+/** Centre height of the hip mass on a standing figure. */
+export const HIP_CENTRE_Y = 0.362;
 
 // ---- sombrero, head-centred ------------------------------------------------
 /**
