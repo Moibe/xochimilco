@@ -17,5 +17,8 @@ export default defineConfig({
 			// See https://svelte.dev/docs/kit/adapters for more information about adapters.
 			adapter: adapter()
 		})
-	]
+	],
+	// Mismo puerto que en el droplet (ver .env.example / deploy.yml): 3108.
+	server: { port: 3108, strictPort: true },
+	preview: { port: 3108, strictPort: true }
 });
