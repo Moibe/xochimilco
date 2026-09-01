@@ -134,9 +134,26 @@
   // y = 0 and the apex at y = radius — exactly an arch shape, no bespoke
   // curve needed. Positioned a little back from the very tip, where the hull
   // has nearly reached full beam, so its feet land on real deck.
-  const ARCH_Z = -halfLen * 0.62;
-  const ARCH_RADIUS = halfBeam * 0.92 + 0.12;
+  // Right up at the bow, FORWARD of the toldo's leading edge (z = -2.72) —
+  // it used to sit at -2.48, i.e. underneath the awning, which is both wrong
+  // for a real trajinera and the reason it couldn't be raised without spearing
+  // the roof.
+  const ARCH_Z = -halfLen * 0.78;
+  /**
+   * Height of the two uprights the semicircle springs from. The arch can't be
+   * made taller just by growing its radius: a half-torus is as wide as it is
+   * tall, and at the old radius its feet were already at x = ±1.18 against a
+   * hull edge of 1.19. Real arches are built exactly this way instead — posts
+   * off the gunwales with the decorated arc spanning the top — so the height
+   * comes from here and the width stays aboard.
+   */
+  const ARCH_SPRING = 1.15;
+  /** Kept inside the hull's half-width at this station (~1.02 + bevel). */
+  const ARCH_RADIUS = 0.98;
   const ARCH_TUBE = 0.05;
+  /** Apex ends up at DECK_Y + ARCH_SPRING + ARCH_RADIUS ≈ 2.45 — comfortably
+   *  the tallest thing on the boat, standing clear above the 1.97 awning. */
+  const ARCH_BASE_Y = DECK_Y + ARCH_SPRING;
 
   const archGeometry = (() => {
     const geo = new TorusGeometry(ARCH_RADIUS, ARCH_TUBE, 10, 48, Math.PI);
@@ -158,10 +175,13 @@
       colors[i * 3 + 2] = c.b;
     }
     geo.setAttribute('color', new BufferAttribute(colors, 3));
-    geo.translate(0, DECK_Y, ARCH_Z);
+    geo.translate(0, ARCH_BASE_Y, ARCH_Z);
     return geo;
   })();
   const archMaterial = new MeshStandardMaterial({ vertexColors: true, roughness: 0.75 });
+
+  const archPostGeometry = new CylinderGeometry(ARCH_TUBE, ARCH_TUBE * 1.15, ARCH_SPRING, 10);
+  const archPostMaterial = new MeshStandardMaterial({ color: '#2f7fc1', roughness: 0.75 });
 
   // Small paper-flower buds scattered along the same curve, deterministically
   // jittered so the arch looks hand-decorated rather than machined — see
@@ -169,19 +189,37 @@
   const FLOWER_COLORS = ['#e63950', '#f2b632', '#8b3fa8', '#2f7fc1', '#ffffff', '#e67e22'].map(
     (c) => new Color(c)
   );
-  const FLOWER_COUNT = 46;
+  const FLOWER_COUNT = 66;
   const flowerGeometry = new IcosahedronGeometry(0.075, 0);
   const flowerMaterial = new MeshStandardMaterial({ roughness: 0.55 });
   const flowerNoise = (a: number) => {
     const s = Math.sin(a * 127.1) * 43758.5453;
     return s - Math.floor(s);
   };
+  // Walked by arc length along the whole frame — up one post, over the arc,
+  // down the other — rather than around the semicircle alone, so the uprights
+  // are garlanded too instead of standing bare under a flowered top.
+  const ARC_LENGTH = Math.PI * ARCH_RADIUS;
+  const FRAME_LENGTH = 2 * ARCH_SPRING + ARC_LENGTH;
   const flowers = Array.from({ length: FLOWER_COUNT }, (_, i) => {
-    const t = i / (FLOWER_COUNT - 1);
-    const angle = t * Math.PI;
-    const jitterR = ARCH_RADIUS + (flowerNoise(i * 3.1) - 0.5) * 0.14;
-    const x = Math.cos(angle) * jitterR;
-    const y = DECK_Y + Math.sin(angle) * jitterR;
+    const s = (i / (FLOWER_COUNT - 1)) * FRAME_LENGTH;
+    const jitter = (flowerNoise(i * 3.1) - 0.5) * 0.13;
+    let x: number;
+    let y: number;
+    if (s < ARCH_SPRING) {
+      // Up the starboard post.
+      x = ARCH_RADIUS + jitter;
+      y = DECK_Y + s;
+    } else if (s < ARCH_SPRING + ARC_LENGTH) {
+      const angle = (s - ARCH_SPRING) / ARCH_RADIUS;
+      const r = ARCH_RADIUS + jitter;
+      x = Math.cos(angle) * r;
+      y = ARCH_BASE_Y + Math.sin(angle) * r;
+    } else {
+      // Back down the port post.
+      x = -ARCH_RADIUS + jitter;
+      y = DECK_Y + (FRAME_LENGTH - s);
+    }
     const z = ARCH_Z + (flowerNoise(i * 5.7) - 0.5) * 0.16;
     const scale = 0.7 + flowerNoise(i * 9.3) * 0.7;
     const color = FLOWER_COLORS[Math.floor(flowerNoise(i * 13.9) * FLOWER_COLORS.length)];
@@ -240,7 +278,11 @@
     const width = ARCH_RADIUS * 1.35;
     const height = (width * canvas.height) / canvas.width;
     const geometry = new PlaneGeometry(width, height);
-    const y = DECK_Y + ARCH_RADIUS * 0.72;
+    // Hung high in the arch's opening, above the awning line. Checked against
+    // the curve: at 0.55 R up from the spring the arch is still
+    // sqrt(R² - h²) ≈ 0.82 half-wide, so the 0.66 half-width banner clears the
+    // tube on both sides instead of poking through it.
+    const y = ARCH_BASE_Y + ARCH_RADIUS * 0.55;
     return { geometry, material, y };
   })();
   /** Half the gap between the two banner faces — enough to never z-fight. */
@@ -339,6 +381,18 @@
   <T.Mesh geometry={tableGeometry} material={tableMaterial} position={[0, DECK_Y + 0.19, 0.1]} />
 
   <T.Mesh geometry={archGeometry} material={archMaterial} castShadow />
+  <T.Mesh
+    geometry={archPostGeometry}
+    material={archPostMaterial}
+    position={[ARCH_RADIUS, DECK_Y + ARCH_SPRING / 2, ARCH_Z]}
+    castShadow
+  />
+  <T.Mesh
+    geometry={archPostGeometry}
+    material={archPostMaterial}
+    position={[-ARCH_RADIUS, DECK_Y + ARCH_SPRING / 2, ARCH_Z]}
+    castShadow
+  />
   <T.InstancedMesh bind:ref={flowerMesh} args={[flowerGeometry, flowerMaterial, flowers.length]} castShadow />
   <T.Mesh
     geometry={namePlate.geometry}
