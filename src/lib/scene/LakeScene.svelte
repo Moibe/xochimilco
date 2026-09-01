@@ -44,7 +44,8 @@
 
 <!-- Key light matches the lake shader's sun direction so the boat and water agree. -->
 <T.DirectionalLight position={[SUN.x * 30, SUN.y * 30, SUN.z * 30]} intensity={2.6} color="#fff6e0" />
-<T.HemisphereLight args={['#dff2ff', '#274a1e', 1.15]} />
+<!-- Ground bounce follows the water's hue — teal now, not leaf-green. -->
+<T.HemisphereLight args={['#dff2ff', '#1e4436', 1.15]} />
 <T.AmbientLight intensity={0.35} />
 
 <Lake sun={SUN} />

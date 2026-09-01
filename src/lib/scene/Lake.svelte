@@ -49,9 +49,9 @@
       uWaves: { value: WAVE_UNIFORM },
       uTime: { value: 0 },
       uSun: { value: SUN_DIRECTION },
-      uDeep: { value: new Color('#152e17') },
-      uShallow: { value: new Color('#4c6f2e') },
-      uFoam: { value: new Color('#dce9c3') },
+      uDeep: { value: new Color('#11333a') },
+      uShallow: { value: new Color('#3e7d6c') },
+      uFoam: { value: new Color('#d9ecdf') },
       uSky: { value: new Color('#bfe6f2') },
     },
     vertexShader: /* glsl */ `
