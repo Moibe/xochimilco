@@ -15,7 +15,8 @@
    * you want when you are checking how a face reads from each angle.
    */
   let {
-    autoRotate = true,
+    /** Still by default: this is a viewer, and you usually want to LOOK. */
+    autoRotate = false,
     hat = false,
     longHair = false,
     shirt = '#f2f0ea',
@@ -46,10 +47,10 @@
      fov the visible height was 1.38 m and it clipped at both ends. -->
 <T.PerspectiveCamera makeDefault position={[0, 0.82, -3]} fov={32} near={0.05} far={50}>
   <OrbitControls
+    {autoRotate}
     enableDamping
     dampingFactor={0.08}
     enablePan={false}
-    {autoRotate}
     autoRotateSpeed={1.6}
     target={[0, 0.68, 0]}
     minDistance={1}

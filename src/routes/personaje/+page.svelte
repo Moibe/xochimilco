@@ -10,7 +10,8 @@
    * igual en la lancha.
    */
 
-  let autoRotate = $state(true);
+  /** Quieto al entrar; el tornamesa es opt-in. */
+  let autoRotate = $state(false);
   let hat = $state(false);
   let longHair = $state(false);
   let shirt = $state('#f2f0ea');
@@ -18,7 +19,13 @@
   const SHIRTS = ['#f2f0ea', '#f3c4c9', '#d6e7c8', '#f7e2ae', '#a9c6de', '#e0a3a0'];
 </script>
 
-<div class="studio">
+<!-- Tomar el muñeco con el mouse apaga el tornamesa: si sigue girando solo,
+     te pelea el ángulo justo cuando lo estás buscando.
+     svelte-ignore: quien controla la interacción aquí es OrbitControls sobre el
+     canvas; esto solo escucha de pasada. La forma accesible de prender y apagar
+     el giro es el botón "Girar" de la toolbar, que sí es un <button> real. -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="studio" onpointerdown={() => (autoRotate = false)}>
   <Canvas>
     <EstudioScene {autoRotate} {hat} {longHair} {shirt} />
   </Canvas>
