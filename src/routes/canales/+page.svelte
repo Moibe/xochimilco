@@ -7,6 +7,7 @@
     MAP_W,
     METRES_PER_UNIT,
     STORE_KEY,
+    isSavedBoat,
     mapToWorld,
     paintLatest,
     paintStrokes,
@@ -166,7 +167,14 @@
   }
 
   function save() {
-    const payload = JSON.stringify({ v: 1, strokes });
+    // La posición de la trajinera viaja en el MISMO documento que los trazos:
+    // es un solo dibujo, y guardarlos por separado abriría la puerta a que
+    // uno se actualice y el otro no.
+    const payload = JSON.stringify({
+      v: 1,
+      strokes,
+      boat: { x: boat.x, z: boat.z, heading: boat.heading },
+    });
     // localStorage primero: instantáneo y funciona sin red. El servidor es la
     // copia fuerte (sobrevive a limpiar el navegador y se comparte entre
     // navegadores); si el PUT falla, el respaldo local ya quedó.
@@ -184,6 +192,19 @@
     });
   }
 
+  /** Aplica una posición guardada al singleton del barco, si es válida. */
+  function applyBoat(data: unknown) {
+    const d = data as { boat?: unknown };
+    if (!isSavedBoat(d?.boat)) return;
+    boat.x = d.boat.x;
+    boat.z = d.boat.z;
+    boat.heading = d.boat.heading;
+    // Sin esto aparecería en el punto guardado pero todavía "navegando" a la
+    // velocidad que llevaba cuando se guardó — mismo motivo que en placeBoat.
+    boat.speed = 0;
+    boatMap = worldToMap(boat.x, boat.z);
+  }
+
   async function load() {
     // El servidor es la fuente autoritativa. Si viene VACÍO, se cae a
     // localStorage a propósito: así el dibujo hecho antes de que existiera el
@@ -195,6 +216,7 @@
         const data = await res.json();
         if (data?.v === 1 && Array.isArray(data.strokes) && data.strokes.length > 0) {
           strokes = data.strokes;
+          applyBoat(data);
           return;
         }
       }
@@ -206,6 +228,7 @@
       if (!raw) return;
       const data = JSON.parse(raw);
       if (data?.v === 1 && Array.isArray(data.strokes)) strokes = data.strokes;
+      applyBoat(data);
     } catch {
       // Datos corruptos: se empieza con el mapa en blanco.
     }
@@ -254,9 +277,11 @@
 
   function onPointerUp() {
     if (!drawing) return;
-    const wasDrawingStrokes = tool !== 'trajinera';
     drawing = false;
-    if (wasDrawingStrokes) save();
+    // Antes esto solo guardaba trazos nuevos — mover la trajinera nunca se
+    // persistía, así que sobrevivía a un cambio de página (el estado sigue en
+    // memoria) pero no a una recarga de verdad.
+    save();
   }
 
   function onPointerLeave() {

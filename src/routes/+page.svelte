@@ -7,9 +7,18 @@
   import { loadCanalMask } from '$lib/scene/canalMask';
   import { autopilot, releaseAutopilot } from '$lib/scene/autopilot';
 
-  // Pick up whatever is currently drawn on the map, every time we come back to
-  // the lake — you can go and re-cut a canal and sail it on your return.
-  onMount(loadCanalMask);
+  // Pick up whatever is currently drawn on the map (and wherever the
+  // Trajinera tool left her) every time we come back to the lake. Gated
+  // behind `ready` rather than fired-and-forgotten: LakeScene frames the
+  // camera on boat.x/z on its very first frame, and that fetch can resolve
+  // a restored position a beat after mount. Mounting the Canvas only once
+  // it's done means the very first frame already has the right numbers,
+  // instead of framing the old spot and then cutting to the new one.
+  let ready = $state(false);
+  onMount(async () => {
+    await loadCanalMask();
+    ready = true;
+  });
 
   /**
    * Keyboard helm. Tracks which arrows are HELD rather than reacting to
@@ -85,11 +94,13 @@
 <svelte:window onkeydown={onKeydown} onkeyup={onKeyup} onblur={releaseAll} />
 
 <div class="lake-stage">
-  <Canvas>
-    <LakeScene />
-  </Canvas>
+  {#if ready}
+    <Canvas>
+      <LakeScene />
+    </Canvas>
 
-  <Minimapa />
+    <Minimapa />
+  {/if}
 
   <div class="helm">
     <span><kbd>↑</kbd> impulsar · <kbd>↓</kbd> frenar · <kbd>←</kbd><kbd>→</kbd> timonear</span>

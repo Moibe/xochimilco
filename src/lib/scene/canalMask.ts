@@ -4,10 +4,12 @@ import {
   MAP_W,
   METRES_PER_UNIT,
   STORE_KEY,
+  isSavedBoat,
   paintStrokes,
   worldToMap,
   type Stroke,
 } from '$lib/canales';
+import { boat } from './boat';
 
 /**
  * The drawn canal map, turned into something the 3D world can use: one
@@ -129,6 +131,7 @@ export async function loadCanalMask(fetcher: typeof fetch = fetch) {
       const data = await res.json();
       if (data?.v === 1 && Array.isArray(data.strokes) && data.strokes.length > 0) {
         buildCanalMask(data.strokes);
+        applySavedBoat(data);
         return;
       }
     }
@@ -140,8 +143,24 @@ export async function loadCanalMask(fetcher: typeof fetch = fetch) {
     if (!raw) return;
     const data = JSON.parse(raw);
     if (data?.v === 1 && Array.isArray(data.strokes)) buildCanalMask(data.strokes);
+    applySavedBoat(data);
   } catch {
     // No local backup either, or it's corrupt: the scene stays open water,
-    // which is a fine fallback — a lake with nothing drawn on it yet.
+    // which is a fine fallback -- a lake with nothing drawn on it yet.
   }
+}
+
+/**
+ * Restores wherever the trajinera was left with the map's Trajinera tool, out
+ * of the same document the strokes travel in. Only called once, at load --
+ * this is not a live sync, so sailing her around afterwards is never
+ * overwritten by a stale save arriving late.
+ */
+function applySavedBoat(data: unknown) {
+  const d = data as { boat?: unknown };
+  if (!isSavedBoat(d?.boat)) return;
+  boat.x = d.boat.x;
+  boat.z = d.boat.z;
+  boat.heading = d.boat.heading;
+  boat.speed = 0;
 }

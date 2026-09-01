@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { isSavedBoat } from '$lib/canales';
 
 /**
  * Persistencia del mapa de canales: los trazos (vectores, no pixeles) viven en
@@ -28,11 +29,18 @@ export async function PUT({ request }) {
   } catch {
     return json({ error: 'JSON inválido' }, { status: 400 });
   }
-  const d = data as { v?: number; strokes?: unknown };
+  const d = data as { v?: number; strokes?: unknown; boat?: unknown };
   if (d?.v !== 1 || !Array.isArray(d.strokes)) {
     return json({ error: 'formato inválido' }, { status: 400 });
   }
-  const body = JSON.stringify({ v: 1, strokes: d.strokes });
+  // La posición guardada es opcional (mapas viejos no la traen) y se descarta
+  // en silencio si viene mal formada, en vez de rechazar todo el guardado por
+  // un campo que ni siquiera es el dibujo.
+  const body = JSON.stringify({
+    v: 1,
+    strokes: d.strokes,
+    ...(isSavedBoat(d.boat) ? { boat: d.boat } : {}),
+  });
   // Un dibujo de canales son unos KB; megas es señal de algo roto, no de arte.
   if (body.length > 2_000_000) {
     return json({ error: 'demasiado grande' }, { status: 413 });

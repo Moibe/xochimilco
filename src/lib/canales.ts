@@ -35,6 +35,28 @@ export type Mode = 'canal' | 'tierra';
 /** A brush stroke: a flat [x0,y0,x1,y1,…] path in map units. */
 export type Stroke = { mode: Mode; points: number[] };
 
+/**
+ * Where the trajinera was left, in world metres/radians — saved alongside the
+ * strokes so placing her on the map (the Trajinera tool) survives a reload
+ * the same way the canals do. Sailing around afterwards is NOT persisted;
+ * only a deliberate placement is, the same way drawing a stroke is saved but
+ * the camera angle you happened to be looking from is not.
+ */
+export type SavedBoat = { x: number; z: number; heading: number };
+
+export function isSavedBoat(v: unknown): v is SavedBoat {
+  const b = v as Partial<SavedBoat> | null | undefined;
+  return (
+    !!b &&
+    typeof b.x === 'number' &&
+    typeof b.z === 'number' &&
+    typeof b.heading === 'number' &&
+    Number.isFinite(b.x) &&
+    Number.isFinite(b.z) &&
+    Number.isFinite(b.heading)
+  );
+}
+
 /** Map units → world metres. The map's centre is the world origin. */
 export function mapToWorld(mx: number, my: number): { x: number; z: number } {
   return { x: (mx - MAP_W / 2) * METRES_PER_UNIT, z: (my - MAP_H / 2) * METRES_PER_UNIT };
