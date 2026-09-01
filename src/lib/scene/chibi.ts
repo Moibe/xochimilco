@@ -86,15 +86,32 @@ export const headGeometry = superellipsoid(HEAD_HALF);
 // never z-fight.
 
 /**
- * A slim soft-cornered oval. Narrowed from 0.13 x 0.16 to 0.09 x 0.14 — the
- * first pass read as goggles: wide enough that the two eyes nearly met the
- * sides of the head, which flattened the whole face. Slimmer ovals set a
- * little closer in leave the cheeks room to read as cheeks.
+ * Nearly round, a touch taller than wide (0.104 x 0.116). Held against the
+ * reference side by side, its eyes are round discs, not the tall slim ovals an
+ * earlier pass narrowed them into — that version read as a squint. The slight
+ * outward tilt and the lashes below are what give the eye its shape; the
+ * silhouette itself stays simple.
  */
-export const eyeGeometry = superellipsoid({ x: 0.04, y: 0.066, z: 0.024 }, 3.0, 20, 16);
-export const EYE_POSITIONS: [number, number, number][] = [
-  [0.098, -0.035, -0.234],
-  [-0.098, -0.035, -0.234],
+export const eyeGeometry = superellipsoid({ x: 0.052, y: 0.058, z: 0.024 }, 2.6, 20, 16);
+export const EYES: { pos: [number, number, number]; rotZ: number }[] = [
+  { pos: [0.098, -0.035, -0.233], rotZ: 0.09 },
+  { pos: [-0.098, -0.035, -0.233], rotZ: -0.09 },
+];
+
+/**
+ * Eyelashes: two short strokes fanning off the OUTER top corner of each eye.
+ * Small, but they are the detail that reads as a face rather than two dots —
+ * the reference figures all have them, and mine had none.
+ *
+ * Mirrored by negating both x and rotZ: a rod tilted +rotZ lifts its +X end,
+ * so the far eye needs the opposite sign to lift ITS outer end too.
+ */
+export const lashGeometry = superellipsoid({ x: 0.026, y: 0.006, z: 0.011 }, 2.4, 12, 8);
+export const LASHES: { pos: [number, number, number]; rotZ: number }[] = [
+  { pos: [0.152, 0.014, -0.231], rotZ: 0.5 },
+  { pos: [0.134, 0.036, -0.231], rotZ: 0.95 },
+  { pos: [-0.152, 0.014, -0.231], rotZ: -0.5 },
+  { pos: [-0.134, 0.036, -0.231], rotZ: -0.95 },
 ];
 
 /**
