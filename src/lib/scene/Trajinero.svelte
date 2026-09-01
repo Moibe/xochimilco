@@ -73,7 +73,7 @@
    * painted white dot in the eye — the highlight you see is the varnish
    * catching the light, so it comes from the material, not from a mesh.
    */
-  const EYE = new MeshStandardMaterial({ color: '#141118', roughness: 0.22 });
+  const EYE = new MeshStandardMaterial({ color: '#141118', roughness: 0.32 });
   const MOUTH = new MeshStandardMaterial({ color: '#7c4634', roughness: 0.6 });
   const SASH = new MeshStandardMaterial({ color: '#c8452f', roughness: 0.85 });
   const PANTS = new MeshStandardMaterial({ color: '#3f4d63', roughness: 0.9 });

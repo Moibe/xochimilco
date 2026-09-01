@@ -22,7 +22,7 @@
   const items = [
     { href: '/', label: 'Inicio' },
     { href: '/canales', label: 'Canales' },
-    { href: '/seccion-tres', label: 'Sección tres' }
+    { href: '/personaje', label: 'Personaje' }
   ];
 </script>
 

@@ -66,7 +66,7 @@
   });
   const longHair = Math.round(IDLE_PHASE * 7) % 2 === 0;
 
-  const EYE = new MeshStandardMaterial({ color: '#141118', roughness: 0.22 });
+  const EYE = new MeshStandardMaterial({ color: '#141118', roughness: 0.32 });
   const MOUTH = new MeshStandardMaterial({ color: '#7c4634', roughness: 0.6 });
   const PANTS = new MeshStandardMaterial({ color: '#48597a', roughness: 0.9 });
   const SHOE = new MeshStandardMaterial({ color: '#efece4', roughness: 0.85 });
@@ -144,13 +144,12 @@
 
       {#if hat}
         <T.Mesh geometry={hairCapGeometry} material={HAIR} />
-        <T.Mesh geometry={sombreroGeometry} material={STRAW} scale={[0.82, 1, 0.82]} castShadow />
+        <T.Mesh geometry={sombreroGeometry} material={STRAW} castShadow />
         <T.Mesh
           geometry={sombreroBandGeometry}
           material={BAND}
           position={[0, SOMBRERO_BAND_Y, 0]}
           rotation={[-Math.PI / 2, 0, 0]}
-          scale={[0.82, 0.82, 1]}
         />
       {:else if longHair}
         <T.Mesh geometry={hairCapGeometry} material={HAIR} />

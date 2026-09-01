@@ -85,11 +85,16 @@ export const headGeometry = superellipsoid(HEAD_HALF);
 // the squircle), so everything below sits just proud of z = -0.244 and can
 // never z-fight.
 
-/** Scaled per-mesh: a big soft-cornered oval, the dominant feature. */
-export const eyeGeometry = superellipsoid({ x: 0.065, y: 0.082, z: 0.028 }, 3.0, 20, 16);
+/**
+ * A slim soft-cornered oval. Narrowed from 0.13 x 0.16 to 0.09 x 0.14 — the
+ * first pass read as goggles: wide enough that the two eyes nearly met the
+ * sides of the head, which flattened the whole face. Slimmer ovals set a
+ * little closer in leave the cheeks room to read as cheeks.
+ */
+export const eyeGeometry = superellipsoid({ x: 0.04, y: 0.066, z: 0.024 }, 3.0, 20, 16);
 export const EYE_POSITIONS: [number, number, number][] = [
-  [0.105, -0.035, -0.232],
-  [-0.105, -0.035, -0.232],
+  [0.098, -0.035, -0.234],
+  [-0.098, -0.035, -0.234],
 ];
 
 /**
@@ -97,12 +102,14 @@ export const EYE_POSITIONS: [number, number, number][] = [
  * more of the character than the eyes do, and leaving them off is most of why
  * the first pass read as blank.
  */
-export const browGeometry = superellipsoid({ x: 0.072, y: 0.017, z: 0.02 }, 3.0, 16, 10);
+// Narrowed alongside the eyes: a brow much wider than the eye under it stops
+// reading as a brow and starts reading as a painted stripe.
+export const browGeometry = superellipsoid({ x: 0.055, y: 0.015, z: 0.019 }, 3.0, 16, 10);
 export const BROWS: { pos: [number, number, number]; rotZ: number }[] = [
-  // Sits 0.041 clear of the eye tops. Closer and the brow merges into the eye
-  // as one dark band; the reference faces keep a visible gap between them.
-  { pos: [0.105, 0.105, -0.236], rotZ: -0.1 },
-  { pos: [-0.105, 0.105, -0.236], rotZ: 0.1 },
+  // Sits clear of the eye tops. Closer and the brow merges into the eye as one
+  // dark band; the reference faces keep a visible gap between them.
+  { pos: [0.098, 0.098, -0.237], rotZ: -0.1 },
+  { pos: [-0.098, 0.098, -0.237], rotZ: 0.1 },
 ];
 
 /** The button nose — small, central, and the thing that says "vinyl toy". */
@@ -115,9 +122,14 @@ export const NOSE_POSITION: [number, number, number] = [0, -0.078, -0.243];
  * face reads as eerie the moment you do.
  */
 export const mouthGeometry = (() => {
-  const geo = new TorusGeometry(0.052, 0.0075, 6, 20, Math.PI * 0.62);
-  // Rotate the arc so its opening faces up — a smile, not a frown.
-  geo.rotateZ(Math.PI * 0.69);
+  const arc = Math.PI * 0.62;
+  const geo = new TorusGeometry(0.052, 0.0075, 6, 20, arc);
+  // A torus arc always starts at +X and sweeps anticlockwise, so its midpoint
+  // sits at arc/2. To read as a smile the arc has to be the BOTTOM of the
+  // circle, i.e. its midpoint at 270°: rotate by 1.5π - arc/2. An earlier
+  // 0.69π put the midpoint at 180° — the left-hand SIDE of the circle, which
+  // renders as a crooked vertical squiggle rather than a mouth.
+  geo.rotateZ(Math.PI * 1.5 - arc / 2);
   return geo;
 })();
 export const MOUTH_POSITION: [number, number, number] = [0, -0.138, -0.238];
@@ -138,11 +150,15 @@ export const hairCapGeometry = superellipsoid(
   1.14
 );
 /**
- * Length down the back and sides for long hair. The partial phi sweep is not
- * cosmetic: three's sphere phi starts at +Z and the kit faces -Z, so sweeping
- * ±0.62π about the BACK leaves a 137° opening for the face. Sweeping the full
- * circle (which an earlier version did) walls the face in behind a solid block
- * of hair — it renders as a faceless helmet.
+ * Length down the back and sides for long hair, with a gap left for the face.
+ *
+ * Getting the gap in the right place needs three's actual phi convention, not
+ * the obvious guess. SphereGeometry lays out
+ *   x = -r·cos(phi)·sin(theta),  z = r·sin(phi)·sin(theta)
+ * so phi = 0 is -X and the BACK of the head (+Z) is at phi = +π/2 — centring
+ * the sweep on 0 (as a first version did) wraps hair over one cheek and leaves
+ * the opening out to the side, burying half the face. Centred on π/2 and
+ * spanning 1.24π, the 137° gap lands squarely on the face at -Z.
  *
  * Its material must be DoubleSide: the open sweep leaves two raw edges.
  */
@@ -153,14 +169,19 @@ export const hairLongGeometry = superellipsoid(
   22,
   0,
   2.15,
-  -Math.PI * 0.62,
+  Math.PI * 0.5 - Math.PI * 0.62,
   Math.PI * 1.24
 );
-/** Masses that fall beside the face — the reference's centre-parted look. */
-export const hairSideGeometry = superellipsoid({ x: 0.075, y: 0.2, z: 0.11 }, 3.0, 16, 14);
+/**
+ * Masses that fall beside the jaw — the reference's centre-parted look. Kept
+ * modest and set BEHIND the face plane (+z): at 0.075 x 0.2 and level with the
+ * head's middle they swung round in front of the chest like a pair of dark
+ * paddles rather than reading as hair.
+ */
+export const hairSideGeometry = superellipsoid({ x: 0.055, y: 0.155, z: 0.08 }, 3.0, 16, 14);
 export const HAIR_SIDES: [number, number, number][] = [
-  [0.245, -0.2, -0.02],
-  [-0.245, -0.2, -0.02],
+  [0.235, -0.175, 0.035],
+  [-0.235, -0.175, 0.035],
 ];
 
 // ---- body ------------------------------------------------------------------
@@ -214,18 +235,28 @@ export const HIP_X = 0.09;
  * upturned edge — a cylinder brim plus a dome crown reads as a lampshade on a
  * ball. Sized up for the bigger squircle head.
  */
+/**
+ * The crown has to be WIDER than the skull or the hat cannot be worn — it can
+ * only be balanced on top. At a crown radius of 0.16 against a head half-width
+ * of 0.24–0.26 it floated over the head like a halo with the hair poking out
+ * beneath. The crown now clears the head at 0.265, and its brim line sits at
+ * y 0.17, below the head's crown at 0.27, so it is genuinely pulled down over
+ * the skull. Outer surface first, then back along the underside, which is what
+ * gives the brim real thickness and its upturned edge.
+ */
 export const sombreroGeometry = new LatheGeometry(
   profile([
-    [0.0, 0.36], [0.085, 0.355], [0.13, 0.338], [0.152, 0.305], [0.159, 0.272],
-    [0.205, 0.259], [0.285, 0.254], [0.35, 0.259], [0.378, 0.27], [0.362, 0.279],
-    [0.3, 0.272], [0.225, 0.272], [0.172, 0.281], [0.168, 0.316], [0.138, 0.344],
-    [0.07, 0.355], [0.0, 0.358],
+    [0.0, 0.335], [0.1, 0.332], [0.175, 0.322], [0.225, 0.295], [0.253, 0.245],
+    [0.265, 0.19], [0.268, 0.168],
+    [0.33, 0.158], [0.4, 0.152], [0.44, 0.158], [0.428, 0.169], [0.36, 0.164],
+    [0.29, 0.172],
+    [0.262, 0.2], [0.248, 0.26], [0.205, 0.305], [0.12, 0.33], [0.0, 0.333],
   ]),
   28
 );
-export const sombreroBandGeometry = new TorusGeometry(0.162, 0.016, 8, 22);
+export const sombreroBandGeometry = new TorusGeometry(0.268, 0.017, 8, 24);
 /** Band height above the head centre (wraps the crown just over the brim). */
-export const SOMBRERO_BAND_Y = 0.292;
+export const SOMBRERO_BAND_Y = 0.205;
 
 /** Stubby limbs must stay within this reach or a hand detaches from the pole. */
 export const ARM_MAX = 0.34;
