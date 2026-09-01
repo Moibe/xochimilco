@@ -236,6 +236,26 @@ export const sashGeometry = new CylinderGeometry(0.193, 0.186, 0.075, 28, 1, tru
 export const armGeometry = new CapsuleGeometry(0.049, 0.155, 4, 12);
 
 /**
+ * A shirt sleeve: the same capsule a fraction fatter, laid over the top of the
+ * arm. The rounded lower cap wraps the arm and reads as a cuff, and the upper
+ * one covers the shoulder joint, so the sleeve also does the job the old
+ * shoulder blobs used to.
+ *
+ * 0.058 against the arm's 0.049 — enough to sit clearly proud of it without
+ * looking inflated. Its length comes from `poseLimb` scaling, so one geometry
+ * serves both lengths.
+ */
+export const sleeveGeometry = new CapsuleGeometry(0.058, 0.13, 4, 14);
+export const SLEEVE_REST = 0.246;
+
+export type Sleeves = 'none' | 'short' | 'long';
+/** How far down the shoulder-to-hand line each sleeve reaches. */
+export const SLEEVE_REACH: Record<Exclude<Sleeves, 'none'>, number> = {
+  short: 0.46,
+  long: 0.84,
+};
+
+/**
  * The seat of the trousers: the piece that makes them a GARMENT instead of two
  * tubes hanging under a shirt. It flares out from under the shirt hem, carries
  * the hips, and closes at the crotch, so the legs emerge from something rather

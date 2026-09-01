@@ -10,6 +10,8 @@
     MOUTH_POSITION,
     NECK_Y_SEATED,
     NOSE_POSITION,
+    SLEEVE_REACH,
+    SLEEVE_REST,
     SOMBRERO_BAND_Y,
     armGeometry,
     browGeometry,
@@ -24,9 +26,11 @@
     mouthGeometry,
     noseGeometry,
     shoeGeometry,
+    sleeveGeometry,
     sombreroBandGeometry,
     sombreroGeometry,
     torsoSeatedGeometry,
+    type Sleeves,
   } from './chibi';
 
   /**
@@ -67,6 +71,10 @@
     side: DoubleSide,
   });
   const longHair = Math.round(IDLE_PHASE * 7) % 2 === 0;
+  // Sleeve length rotates off the same phase, so a benchful of passengers is
+  // not four people in identical shirts.
+  const SLEEVE_CYCLE: Sleeves[] = ['short', 'none', 'long', 'short'];
+  const sleeves = SLEEVE_CYCLE[Math.abs(Math.round(IDLE_PHASE * 7)) % SLEEVE_CYCLE.length];
 
   const EYE = new MeshStandardMaterial({ color: '#141118', roughness: 0.32 });
   const MOUTH = new MeshStandardMaterial({ color: '#7c4634', roughness: 0.6 });
@@ -101,8 +109,20 @@
   // line along Z.
   // Arms reach down into the lap. Same length as the standing figure's (see
   // Personaje's note) — just folded, since a seated arm rests on the thigh.
-  const armR = poseLimb(new Vector3(0, 0.6, 0.155), new Vector3(-0.17, 0.37, 0.14), 0.253);
-  const armL = poseLimb(new Vector3(0, 0.6, -0.155), new Vector3(-0.17, 0.37, -0.14), 0.253);
+  const shoulderR = new Vector3(0, 0.6, 0.155);
+  const shoulderL = new Vector3(0, 0.6, -0.155);
+  const handR = new Vector3(-0.17, 0.37, 0.14);
+  const handL = new Vector3(-0.17, 0.37, -0.14);
+  const armR = poseLimb(shoulderR, handR, 0.253);
+  const armL = poseLimb(shoulderL, handL, 0.253);
+  const sleeveR =
+    sleeves === 'none'
+      ? null
+      : poseLimb(shoulderR, new Vector3().lerpVectors(shoulderR, handR, SLEEVE_REACH[sleeves]), SLEEVE_REST);
+  const sleeveL =
+    sleeves === 'none'
+      ? null
+      : poseLimb(shoulderL, new Vector3().lerpVectors(shoulderL, handL, SLEEVE_REACH[sleeves]), SLEEVE_REST);
 
   let group = $state.raw<Group | undefined>();
   let headGroup = $state.raw<Group | undefined>();
@@ -129,6 +149,10 @@
 
   <T.Mesh geometry={armGeometry} material={SKIN} position={armR.position} rotation={armR.rotation} scale={armR.scale} />
   <T.Mesh geometry={armGeometry} material={SKIN} position={armL.position} rotation={armL.rotation} scale={armL.scale} />
+  {#if sleeveR && sleeveL}
+    <T.Mesh geometry={sleeveGeometry} material={SHIRT} position={sleeveR.position} rotation={sleeveR.rotation} scale={sleeveR.scale} />
+    <T.Mesh geometry={sleeveGeometry} material={SHIRT} position={sleeveL.position} rotation={sleeveL.rotation} scale={sleeveL.scale} />
+  {/if}
   <T.Mesh geometry={handGeometry} material={SKIN} position={[-0.17, 0.37, 0.14]} />
   <T.Mesh geometry={handGeometry} material={SKIN} position={[-0.17, 0.37, -0.14]} />
 

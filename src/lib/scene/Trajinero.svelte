@@ -22,6 +22,8 @@
     NOSE_POSITION,
     SHOULDER_X,
     SHOULDER_Y,
+    SLEEVE_REACH,
+    SLEEVE_REST,
     SOMBRERO_BAND_Y,
     armGeometry,
     browGeometry,
@@ -35,6 +37,7 @@
     mouthGeometry,
     noseGeometry,
     shoeGeometry,
+    sleeveGeometry,
     sombreroBandGeometry,
     sombreroGeometry,
     sashGeometry,
@@ -137,6 +140,20 @@
 
   const armL = poseLimb(shoulderL, upperHand, ARM_REST, WAIST_Y);
   const armR = poseLimb(shoulderR, lowerHand, ARM_REST, WAIST_Y);
+  // Long sleeves: he works all day in the sun. They ride the same
+  // shoulder-to-hand lines the arms do, so they stay on however he is posed.
+  const sleeveL = poseLimb(
+    shoulderL,
+    new Vector3().lerpVectors(shoulderL, upperHand, SLEEVE_REACH.long),
+    SLEEVE_REST,
+    WAIST_Y
+  );
+  const sleeveR = poseLimb(
+    shoulderR,
+    new Vector3().lerpVectors(shoulderR, lowerHand, SLEEVE_REACH.long),
+    SLEEVE_REST,
+    WAIST_Y
+  );
 
   // ---- legs: a braced punting stance, right foot forward -------------------
   const legR = poseLimb(new Vector3(HIP_X, HIP_Y, -0.01), new Vector3(HIP_X + 0.012, 0.095, -0.055), LEG_REST);
@@ -191,6 +208,8 @@
 
     <T.Mesh geometry={armGeometry} material={SKIN} position={armL.position} rotation={armL.rotation} scale={armL.scale} castShadow />
     <T.Mesh geometry={armGeometry} material={SKIN} position={armR.position} rotation={armR.rotation} scale={armR.scale} castShadow />
+    <T.Mesh geometry={sleeveGeometry} material={SHIRT} position={sleeveL.position} rotation={sleeveL.rotation} scale={sleeveL.scale} />
+    <T.Mesh geometry={sleeveGeometry} material={SHIRT} position={sleeveR.position} rotation={sleeveR.rotation} scale={sleeveR.scale} />
     <T.Mesh geometry={handGeometry} material={SKIN} position={[upperHand.x, w(upperHand.y), upperHand.z]} />
     <T.Mesh geometry={handGeometry} material={SKIN} position={[lowerHand.x, w(lowerHand.y), lowerHand.z]} />
 

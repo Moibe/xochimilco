@@ -15,6 +15,8 @@
     NOSE_POSITION,
     SHOULDER_X,
     SHOULDER_Y,
+    SLEEVE_REACH,
+    SLEEVE_REST,
     SOMBRERO_BAND_Y,
     armGeometry,
     browGeometry,
@@ -30,9 +32,11 @@
     mouthGeometry,
     noseGeometry,
     shoeGeometry,
+    sleeveGeometry,
     sombreroBandGeometry,
     sombreroGeometry,
     torsoGeometry,
+    type Sleeves,
   } from './chibi';
 
   /**
@@ -52,6 +56,7 @@
     shoes = '#efece4',
     hat = false,
     longHair = false,
+    sleeves = 'short',
   }: {
     shirt?: string;
     pants?: string;
@@ -60,6 +65,7 @@
     shoes?: string;
     hat?: boolean;
     longHair?: boolean;
+    sleeves?: Sleeves;
   } = $props();
 
   // Materials follow the props live: this figure exists to be fiddled with.
@@ -111,6 +117,21 @@
     new Vector3(-SHOULDER_X - ARM_OUT, HAND_Y, 0.0),
     0.253
   );
+  // Sleeves ride the very same shoulder-to-hand line, cut short at a fraction
+  // of it, so they can never drift off the arm however the arm is posed.
+  const shoulderR = new Vector3(SHOULDER_X, SHOULDER_Y, -0.01);
+  const shoulderL = new Vector3(-SHOULDER_X, SHOULDER_Y, -0.01);
+  const handR = new Vector3(SHOULDER_X + ARM_OUT, HAND_Y, 0);
+  const handL = new Vector3(-SHOULDER_X - ARM_OUT, HAND_Y, 0);
+  const sleeve = $derived.by(() => {
+    if (sleeves === 'none') return null;
+    const reach = SLEEVE_REACH[sleeves];
+    return {
+      r: poseLimb(shoulderR, new Vector3().lerpVectors(shoulderR, handR, reach), SLEEVE_REST),
+      l: poseLimb(shoulderL, new Vector3().lerpVectors(shoulderL, handL, reach), SLEEVE_REST),
+    };
+  });
+
   const legR = poseLimb(new Vector3(HIP_X, HIP_Y, 0), new Vector3(HIP_X, 0.095, 0), 0.332);
   const legL = poseLimb(new Vector3(-HIP_X, HIP_Y, 0), new Vector3(-HIP_X, 0.095, 0), 0.332);
 </script>
@@ -125,6 +146,10 @@
   <T.Mesh geometry={torsoGeometry} material={SHIRT} />
   <T.Mesh geometry={armGeometry} material={SKIN} position={armR.position} rotation={armR.rotation} scale={armR.scale} />
   <T.Mesh geometry={armGeometry} material={SKIN} position={armL.position} rotation={armL.rotation} scale={armL.scale} />
+  {#if sleeve}
+    <T.Mesh geometry={sleeveGeometry} material={SHIRT} position={sleeve.r.position} rotation={sleeve.r.rotation} scale={sleeve.r.scale} />
+    <T.Mesh geometry={sleeveGeometry} material={SHIRT} position={sleeve.l.position} rotation={sleeve.l.rotation} scale={sleeve.l.scale} />
+  {/if}
   <T.Mesh geometry={handGeometry} material={SKIN} position={[SHOULDER_X + ARM_OUT, HAND_Y, 0]} />
   <T.Mesh geometry={handGeometry} material={SKIN} position={[-SHOULDER_X - ARM_OUT, HAND_Y, 0]} />
 

@@ -2,6 +2,7 @@
   import { T } from '@threlte/core';
   import { OrbitControls } from '@threlte/extras';
   import { CircleGeometry, CylinderGeometry, MeshBasicMaterial, MeshStandardMaterial } from 'three';
+  import type { Sleeves } from './chibi';
   import Personaje from './Personaje.svelte';
 
   /**
@@ -20,7 +21,14 @@
     hat = false,
     longHair = false,
     shirt = '#f2f0ea',
-  }: { autoRotate?: boolean; hat?: boolean; longHair?: boolean; shirt?: string } = $props();
+    sleeves = 'short',
+  }: {
+    autoRotate?: boolean;
+    hat?: boolean;
+    longHair?: boolean;
+    shirt?: string;
+    sleeves?: Sleeves;
+  } = $props();
 
   const BACKDROP = '#efe7db';
 
@@ -72,4 +80,4 @@
 <T.Mesh geometry={podiumGeometry} material={podiumMaterial} position={[0, -0.025, 0]} />
 <T.Mesh geometry={shadowGeometry} material={shadowMaterial} position={[0, 0.003, 0]} />
 
-<Personaje {hat} {longHair} {shirt} />
+<Personaje {hat} {longHair} {shirt} {sleeves} />

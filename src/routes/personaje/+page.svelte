@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Canvas } from '@threlte/core';
   import EstudioScene from '$lib/scene/EstudioScene.svelte';
+  import type { Sleeves } from '$lib/scene/chibi';
 
   /**
    * El estudio del personaje: un muñequito solo, sobre un tornamesa, para
@@ -16,6 +17,18 @@
   let longHair = $state(false);
   let shirt = $state('#f2f0ea');
 
+  // Un solo botón que cicla, en vez de tres: la toolbar ya va llena.
+  const SLEEVE_CYCLE: Sleeves[] = ['none', 'short', 'long'];
+  const SLEEVE_LABEL: Record<Sleeves, string> = {
+    none: 'Sin mangas',
+    short: 'Manga corta',
+    long: 'Manga larga',
+  };
+  let sleeves = $state<Sleeves>('short');
+  const nextSleeves = () => {
+    sleeves = SLEEVE_CYCLE[(SLEEVE_CYCLE.indexOf(sleeves) + 1) % SLEEVE_CYCLE.length];
+  };
+
   const SHIRTS = ['#f2f0ea', '#f3c4c9', '#d6e7c8', '#f7e2ae', '#a9c6de', '#e0a3a0'];
 </script>
 
@@ -27,7 +40,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="studio" onpointerdown={() => (autoRotate = false)}>
   <Canvas>
-    <EstudioScene {autoRotate} {hat} {longHair} {shirt} />
+    <EstudioScene {autoRotate} {hat} {longHair} {shirt} {sleeves} />
   </Canvas>
 
   <div class="toolbar">
@@ -39,6 +52,9 @@
       <button class="ctl" class:is-active={hat} onclick={() => (hat = !hat)}>Sombrero</button>
       <button class="ctl" class:is-active={longHair} onclick={() => (longHair = !longHair)}>
         Pelo largo
+      </button>
+      <button class="ctl" class:is-active={sleeves !== 'none'} onclick={nextSleeves}>
+        {SLEEVE_LABEL[sleeves]}
       </button>
     </div>
     <div class="group swatches">
