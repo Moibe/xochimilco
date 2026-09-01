@@ -19,6 +19,7 @@
     SRGBColorSpace,
     TorusGeometry,
   } from 'three';
+  import Trajinero from './Trajinero.svelte';
   import { waveHeight, waveSlope } from './waves';
 
   /**
@@ -265,10 +266,11 @@
   // Four evenly spaced pole stations under the roof footprint.
   const POLE_STATIONS = Array.from({ length: 4 }, (_, i) => ROOF_Z - LOA * 0.3 + (i * (LOA * 0.6)) / 3);
 
-  // The punting pole (vara), leaned into the water off the stern — the detail
-  // that reads as "punted", not "motorised", at a glance.
-  const varaGeometry = new CylinderGeometry(0.025, 0.03, 3.4, 8);
-  const varaMaterial = new MeshStandardMaterial({ color: '#4a3826', roughness: 0.85 });
+  // Where the trajinero stands: on the stern deck, outboard on the starboard
+  // side so his vara goes down past the gunwale instead of through it, and aft
+  // of the toldo's rear edge (z = +2.08) so he's standing in the open the way
+  // a poler actually does. The deck plank's top surface is DECK_Y + 0.06.
+  const POLER_POSITION: [number, number, number] = [0.7, DECK_Y + 0.06, 3.0];
 
   // ---- motion: same four-probe technique as ContainerShip, retuned --------
   // A flat wide punt bridges short ripples almost flat (negligible pitch) and
@@ -318,10 +320,7 @@
     <T.Mesh geometry={poleGeometry} material={poleMaterial} position={[-halfBeam * 0.92, DECK_Y + 0.85, z]} />
   {/each}
 
-  <T.Mesh
-    geometry={varaGeometry}
-    material={varaMaterial}
-    position={[halfBeam * 0.4, DECK_Y + 0.6, halfLen * 0.94]}
-    rotation={[Math.PI * 0.32, 0, Math.PI * 0.08]}
-  />
+  <T.Group position={POLER_POSITION}>
+    <Trajinero />
+  </T.Group>
 </T.Group>
