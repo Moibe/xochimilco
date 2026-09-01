@@ -19,7 +19,9 @@
     SRGBColorSpace,
     TorusGeometry,
   } from 'three';
+  import Pasajero from './Pasajero.svelte';
   import Trajinero from './Trajinero.svelte';
+  import { stroke } from './stroke';
   import { waveHeight, waveSlope } from './waves';
 
   /**
@@ -203,8 +205,14 @@
   });
 
   // Name banner, hung just under the apex — same canvas-texture trick as
-  // ContainerShip's hull nameplate, but double-sided since the arch is meant
-  // to be read from either the bow or the passenger benches.
+  // ContainerShip's hull nameplate.
+  //
+  // Rendered as TWO back-to-back single-sided planes rather than one
+  // DoubleSide plane. A double-sided plane shows the very same texels from
+  // behind, which means the lettering comes out mirrored to anyone looking at
+  // the arch from the bow — and the bow is the side people photograph. Two
+  // planes, the rear one turned 180° about Y, put a correctly-reading face
+  // toward each direction.
   const namePlate = (() => {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
@@ -228,13 +236,15 @@
     const texture = new CanvasTexture(canvas);
     texture.colorSpace = SRGBColorSpace;
     texture.needsUpdate = true;
-    const material = new MeshBasicMaterial({ map: texture, transparent: true, side: DoubleSide });
+    const material = new MeshBasicMaterial({ map: texture, transparent: true });
     const width = ARCH_RADIUS * 1.35;
     const height = (width * canvas.height) / canvas.width;
     const geometry = new PlaneGeometry(width, height);
-    const position: [number, number, number] = [0, DECK_Y + ARCH_RADIUS * 0.72, ARCH_Z];
-    return { geometry, material, position };
+    const y = DECK_Y + ARCH_RADIUS * 0.72;
+    return { geometry, material, y };
   })();
+  /** Half the gap between the two banner faces — enough to never z-fight. */
+  const PLATE_GAP = 0.012;
 
   // ---- toldo: the striped canvas awning over the passenger benches --------
   const ROOF_Y = DECK_Y + 1.65;
@@ -272,6 +282,18 @@
   // a poler actually does. The deck plank's top surface is DECK_Y + 0.06.
   const POLER_POSITION: [number, number, number] = [0.7, DECK_Y + 0.06, 3.0];
 
+  // Passengers on the two benches, facing each other across the table. The Z
+  // stations are picked to sit at least ~0.5 m clear of the toldo's uprights
+  // (which stand at z = -2.72, -1.12, 0.48 and 2.08) so nobody has a pole
+  // growing through their shoulder.
+  const BENCH_X = halfBeam - 0.24;
+  const PASSENGERS = [
+    { side: 1, z: -1.75, shirt: '#e8eef6', hat: true, phase: 0 },
+    { side: 1, z: 1.25, shirt: '#f3c4c9', hat: false, phase: 1.9 },
+    { side: -1, z: -0.35, shirt: '#d6e7c8', hat: false, phase: 3.4 },
+    { side: -1, z: 1.55, shirt: '#f7e2ae', hat: true, phase: 5.1 },
+  ];
+
   // ---- motion: same four-probe technique as ContainerShip, retuned --------
   // A flat wide punt bridges short ripples almost flat (negligible pitch) and
   // rocks a little more readily side-to-side per unit of tilt than a hull ten
@@ -292,7 +314,13 @@
 
     g.position.y = (bow + stern + port + starboard) * 0.25 * 0.92;
 
-    const pitch = Math.atan2(stern - bow, halfLen * 1.6) * 0.16;
+    // Surge from the punting stroke, on top of the wave-driven pitch: while he
+    // gains on the drag the hull's own inertia squats the stern and lifts the
+    // bow, and it settles back as the boat coasts through the recovery. Sign
+    // follows the existing pitch convention — positive is bow-DOWN (it's built
+    // from `stern - bow`) — so accelerating takes a negative term.
+    const surge = -stroke.accel * 0.022;
+    const pitch = Math.atan2(stern - bow, halfLen * 1.6) * 0.16 + surge;
     const roll = Math.atan2(starboard - port, BEAM) * 0.46;
     g.rotation.x = pitch;
     g.rotation.z = roll;
@@ -312,7 +340,17 @@
 
   <T.Mesh geometry={archGeometry} material={archMaterial} castShadow />
   <T.InstancedMesh bind:ref={flowerMesh} args={[flowerGeometry, flowerMaterial, flowers.length]} castShadow />
-  <T.Mesh geometry={namePlate.geometry} material={namePlate.material} position={namePlate.position} />
+  <T.Mesh
+    geometry={namePlate.geometry}
+    material={namePlate.material}
+    position={[0, namePlate.y, ARCH_Z + PLATE_GAP]}
+  />
+  <T.Mesh
+    geometry={namePlate.geometry}
+    material={namePlate.material}
+    position={[0, namePlate.y, ARCH_Z - PLATE_GAP]}
+    rotation={[0, Math.PI, 0]}
+  />
 
   <T.Mesh geometry={roofGeometry} material={roofMaterial} position={[0, ROOF_Y, ROOF_Z]} />
   {#each POLE_STATIONS as z, i (i)}
@@ -323,4 +361,15 @@
   <T.Group position={POLER_POSITION}>
     <Trajinero />
   </T.Group>
+
+  <!-- Port-side passengers are turned 180° rather than mirrored by a negative
+       scale, which would invert their face winding and light them inside out. -->
+  {#each PASSENGERS as p, i (i)}
+    <T.Group
+      position={[BENCH_X * p.side, DECK_Y + 0.06, p.z]}
+      rotation={[0, p.side === 1 ? 0 : Math.PI, 0]}
+    >
+      <Pasajero shirt={p.shirt} hat={p.hat} phase={p.phase} />
+    </T.Group>
+  {/each}
 </T.Group>

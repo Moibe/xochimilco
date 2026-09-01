@@ -9,6 +9,7 @@
     MeshBasicMaterial,
     Object3D,
   } from 'three';
+  import { stroke } from './stroke';
   import { waveHeight } from './waves';
 
   /**
@@ -16,18 +17,23 @@
    * toned way down: the trajinera never actually translates either, so this is
    * what tells the eye the canal is gliding past it. But a punted boat on a
    * sheltered canal makes nothing like an ocean-going wake, so the count,
-   * speed, size and opacity here are all a fraction of the original's.
+   * size and opacity here are all a fraction of the original's.
+   *
+   * The drift rate is not a constant either: it's the boat's actual speed off
+   * the shared stroke clock, so the water gathers pace while the trajinero is
+   * pushing and coasts back down while he brings the vara forward.
    */
   let {
     count = 90,
     radius = 22,
-    speed = 1.1,
+    /** Multiplier on the boat's real speed, for tuning the sense of pace. */
+    speedScale = 1,
     driftX = 0,
     driftZ = 1,
   }: {
     count?: number;
     radius?: number;
-    speed?: number;
+    speedScale?: number;
     driftX?: number;
     driftZ?: number;
   } = $props();
@@ -83,7 +89,7 @@
     const instanced = mesh;
     if (!instanced) return;
     elapsed += delta;
-    const step = speed * delta;
+    const step = stroke.speed * speedScale * delta;
 
     for (let i = 0; i < count; i++) {
       const s = streaks[i];

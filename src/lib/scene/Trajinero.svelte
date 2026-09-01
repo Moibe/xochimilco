@@ -6,10 +6,11 @@
     Euler,
     Group,
     MeshStandardMaterial,
-    Quaternion,
     SphereGeometry,
     Vector3,
   } from 'three';
+  import { limb } from './figures';
+  import { stroke } from './stroke';
 
   /**
    * The trajinero: the poler who stands on the stern deck and pushes the boat
@@ -21,13 +22,13 @@
    * INSIDE the trajinera's moving group, so it inherits the hull's heave,
    * pitch and roll for free and never drifts off the deck.
    *
-   * The stroke below is the real cycle, not a loop of one sine: a long drive
-   * (pole planted, swept aft, body folding forward into the push) followed by
-   * a shorter recovery (pole lifted clear of the water and swung back forward).
-   * That asymmetry is what reads as effort — a symmetric swing looks like the
-   * pole is stirring the water rather than pushing off the bottom.
+   * The stroke is the real cycle, not a loop of one sine: a long drive (pole
+   * planted, swept aft, body folding forward into the push) followed by a
+   * shorter recovery that swings it back forward. That asymmetry is what reads
+   * as effort — a symmetric swing looks like the pole is stirring the water
+   * rather than pushing off the bottom. The timing itself lives in `stroke.ts`,
+   * shared with the hull's surge and the drift of the water past it.
    */
-  let { strokeSeconds = 3.6 }: { strokeSeconds?: number } = $props();
 
   // ---- proportions (metres, feet-relative; 1 world unit = 1 m) -------------
   const HIP_Y = 0.86;
@@ -60,24 +61,6 @@
   const BAND = new MeshStandardMaterial({ color: '#8a6b3f', roughness: 0.9 });
   const SHOE = new MeshStandardMaterial({ color: '#4a3a2c', roughness: 0.9 });
   const WOOD = new MeshStandardMaterial({ color: '#4a3826', roughness: 0.85 });
-
-  /**
-   * A bone: a tapered cylinder baked to run from `from` to `to` in the parent's
-   * space. Cheaper than parenting a rotated group per limb, and it keeps the
-   * arm angles honest — they're solved from the hand positions rather than
-   * eyeballed as Euler triples.
-   */
-  function limb(from: Vector3, to: Vector3, rTop: number, rBottom: number) {
-    const dir = new Vector3().subVectors(to, from);
-    const len = dir.length();
-    const geo = new CylinderGeometry(rTop, rBottom, len, 8);
-    geo.translate(0, -len / 2, 0); // hang from the origin, down -Y
-    geo.applyQuaternion(
-      new Quaternion().setFromUnitVectors(new Vector3(0, -1, 0), dir.clone().normalize())
-    );
-    geo.translate(from.x, from.y, from.z);
-    return geo;
-  }
 
   /** Everything above the hips is baked hip-relative, since it pivots there. */
   const toHip = (v: Vector3) => v.clone().setY(v.y - HIP_Y);
@@ -128,34 +111,17 @@
   let figure = $state.raw<Group | undefined>();
   let upperBody = $state.raw<Group | undefined>();
   let pole = $state.raw<Group | undefined>();
-  let elapsed = 0;
 
-  /** Fraction of the cycle spent driving; the rest is the quicker recovery. */
-  const DRIVE = 0.62;
-  const ease = (u: number) => u * u * (3 - 2 * u);
-
-  useTask((delta) => {
-    elapsed += delta;
-    const p = (elapsed % strokeSeconds) / strokeSeconds;
-
-    let tilt: number;
-    let lift: number;
-    let drive: number; // 0 at the catch, 1 at the release
-
-    if (p < DRIVE) {
-      drive = ease(p / DRIVE);
-      tilt = CATCH + (RELEASE - CATCH) * drive;
-      lift = 0; // planted on the bottom
-    } else {
-      const u = (p - DRIVE) / (1 - DRIVE);
-      drive = 1 - ease(u);
-      tilt = RELEASE + (CATCH - RELEASE) * ease(u);
-      // Unweighted and skimmed forward, NOT hoisted clear: with ~1.7 m of a
-      // 4.4 m pole under water, actually lifting the tip out would mean
-      // raising the hands over his head. Polers in shallow canals feather the
-      // vara forward through the water instead, which is what this is.
-      lift = Math.sin(u * Math.PI) * 0.07;
-    }
+  useTask(() => {
+    // Timing comes from the shared stroke clock, not a private one — the same
+    // push that swings this pole is what surges the hull and speeds the water
+    // past it. `LakeScene` owns the tick; this only reads.
+    const tilt = CATCH + (RELEASE - CATCH) * stroke.drive;
+    // Unweighted and skimmed forward on the recovery, NOT hoisted clear: with
+    // ~1.7 m of a 4.4 m pole under water, actually lifting the tip out would
+    // mean raising his hands over his head. Polers in shallow canals feather
+    // the vara forward through the water instead, which is what this is.
+    const lift = stroke.driving ? 0 : Math.sin(stroke.progress * Math.PI) * 0.07;
 
     if (pole) {
       pole.rotation.x = tilt;
@@ -163,9 +129,9 @@
       pole.position.y = GRIP_HIP.y + lift;
     }
     // He folds forward into the push and straightens on the recovery.
-    if (upperBody) upperBody.rotation.x = -0.04 - drive * 0.22;
+    if (upperBody) upperBody.rotation.x = -0.04 - stroke.drive * 0.22;
     // Knees give a little at the hardest part of the drive.
-    if (figure) figure.position.y = -drive * 0.05;
+    if (figure) figure.position.y = -stroke.drive * 0.05;
   });
 </script>
 

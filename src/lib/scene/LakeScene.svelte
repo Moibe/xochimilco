@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { T } from '@threlte/core';
+  import { T, useTask } from '@threlte/core';
   import { OrbitControls } from '@threlte/extras';
   import { Vector3 } from 'three';
   import Lake from './Lake.svelte';
+  import Lirios from './Lirios.svelte';
   import Ripples from './Ripples.svelte';
   import Trajinera from './Trajinera.svelte';
+  import { advanceStroke } from './stroke';
 
   /**
    * The whole vignette: one trajinera, one canal, one midday sun — the
@@ -18,6 +20,12 @@
 
   const SUN = new Vector3(0.35, 0.86, 0.28).normalize();
   const SKY = '#bfe6f2';
+
+  // The scene root owns the punting clock, and is the ONLY caller that advances
+  // it — the poler, the hull's surge, the ripples and the hyacinth all just
+  // read it. Advancing it from any of those would step the stroke several times
+  // per frame and run the boat at a multiple of the speed it should have.
+  useTask((delta) => advanceStroke(delta));
 </script>
 
 <T.FogExp2 attach="fog" args={[SKY, 0.014]} />
@@ -40,5 +48,6 @@
 <T.AmbientLight intensity={0.35} />
 
 <Lake sun={SUN} />
+<Lirios />
 <Ripples driftX={0} driftZ={1} />
 <Trajinera {name} {hullColor} />
