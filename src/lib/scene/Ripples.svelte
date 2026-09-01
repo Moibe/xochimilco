@@ -9,56 +9,37 @@
     MeshBasicMaterial,
     Object3D,
   } from 'three';
-  import { stroke } from './stroke';
+  import { boat } from './boat';
   import { waveHeight } from './waves';
 
   /**
-   * Drifting ripple streaks — the same trick as `logistica-oceanica`'s `Foam`,
-   * toned way down: the trajinera never actually translates either, so this is
-   * what tells the eye the canal is gliding past it. But a punted boat on a
-   * sheltered canal makes nothing like an ocean-going wake, so the count,
-   * size and opacity here are all a fraction of the original's.
-   *
-   * The drift rate is not a constant either: it's the boat's actual speed off
-   * the shared stroke clock, so the water gathers pace while the trajinero is
-   * pushing and coasts back down while he brings the vara forward.
+   * Wind streaks on the surface. These used to DRIFT past a stationary hull to
+   * fake headway; now that the trajinera really travels, they stay anchored to
+   * the water and she passes them instead. Each one recycles to the far edge of
+   * a ring around her once she leaves it behind, so the lake never runs out.
    */
   let {
     count = 90,
+    /** Streaks live within this radius of the boat. */
     radius = 22,
-    /** Multiplier on the boat's real speed, for tuning the sense of pace. */
-    speedScale = 1,
-    driftX = 0,
-    driftZ = 1,
-  }: {
-    count?: number;
-    radius?: number;
-    speedScale?: number;
-    driftX?: number;
-    driftZ?: number;
-  } = $props();
+    /** Wind direction the streaks lie along, world radians about Y. */
+    windAngle = 0,
+  }: { count?: number; radius?: number; windAngle?: number } = $props();
 
   // svelte-ignore state_referenced_locally
-  const len = Math.hypot(driftX, driftZ) || 1;
+  const RADIUS = radius;
   // svelte-ignore state_referenced_locally
-  const dX = driftX / len;
-  // svelte-ignore state_referenced_locally
-  const dZ = driftZ / len;
-  const pX = -dZ;
-  const pZ = dX;
-  const driftAngle = Math.atan2(dX, dZ);
-
-  // svelte-ignore state_referenced_locally
-  const initialCount = count;
-  // svelte-ignore state_referenced_locally
-  const initialRadius = radius;
+  const WIND = windAngle;
 
   type Streak = { x: number; z: number; scale: number };
   const streaks: Streak[] = [];
-  for (let i = 0; i < initialCount; i++) {
+  // svelte-ignore state_referenced_locally
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.sqrt(Math.random()) * RADIUS; // sqrt keeps the disc even
     streaks.push({
-      x: (Math.random() * 2 - 1) * initialRadius,
-      z: (Math.random() * 2 - 1) * initialRadius,
+      x: Math.cos(a) * r,
+      z: Math.sin(a) * r,
       scale: 0.4 + Math.random() * 0.9,
     });
   }
@@ -89,23 +70,21 @@
     const instanced = mesh;
     if (!instanced) return;
     elapsed += delta;
-    const step = stroke.speed * speedScale * delta;
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < streaks.length; i++) {
       const s = streaks[i];
-      s.x += dX * step;
-      s.z += dZ * step;
-
-      const fwd = s.x * dX + s.z * dZ;
-      const lat = s.x * pX + s.z * pZ;
-      if (Math.abs(fwd) > radius || Math.abs(lat) > radius) {
-        const newLat = (Math.random() * 2 - 1) * radius;
-        s.x = -radius * dX + newLat * pX;
-        s.z = -radius * dZ + newLat * pZ;
+      const dx = s.x - boat.x;
+      const dz = s.z - boat.z;
+      if (dx * dx + dz * dz > RADIUS * RADIUS) {
+        // Left behind: put it back on the rim at a fresh angle. These are
+        // barely-there marks at 0.1 opacity, so a rim respawn never pops.
+        const a = Math.random() * Math.PI * 2;
+        s.x = boat.x + Math.cos(a) * RADIUS;
+        s.z = boat.z + Math.sin(a) * RADIUS;
       }
 
       dummy.position.set(s.x, waveHeight(s.x, s.z, elapsed) + 0.02, s.z);
-      dummy.rotation.set(0, driftAngle, 0);
+      dummy.rotation.set(0, WIND, 0);
       dummy.scale.set(s.scale, 1, s.scale);
       dummy.updateMatrix();
       instanced.setMatrixAt(i, dummy.matrix);

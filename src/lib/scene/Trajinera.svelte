@@ -21,7 +21,7 @@
   } from 'three';
   import Pasajero from './Pasajero.svelte';
   import Trajinero from './Trajinero.svelte';
-  import { stroke } from './stroke';
+  import { boat, boatToWorld } from './boat';
   import { waveHeight, waveSlope } from './waves';
 
   /**
@@ -349,11 +349,20 @@
     const g = group;
     if (!g) return;
 
-    const bow = waveHeight(0, -halfLen * 0.85, elapsed);
-    const stern = waveHeight(0, halfLen * 0.85, elapsed);
-    const port = waveHeight(-halfBeam, 0, elapsed);
-    const starboard = waveHeight(halfBeam, 0, elapsed);
+    // The four probes are taken in WORLD space, rotated with the heading —
+    // sampling fixed local offsets would have her riding the swell of
+    // wherever she happened to be pointing when the scene loaded.
+    const pBow = boatToWorld(0, -halfLen * 0.85);
+    const pStern = boatToWorld(0, halfLen * 0.85);
+    const pPort = boatToWorld(-halfBeam, 0);
+    const pStar = boatToWorld(halfBeam, 0);
+    const bow = waveHeight(pBow.x, pBow.z, elapsed);
+    const stern = waveHeight(pStern.x, pStern.z, elapsed);
+    const port = waveHeight(pPort.x, pPort.z, elapsed);
+    const starboard = waveHeight(pStar.x, pStar.z, elapsed);
 
+    g.position.x = boat.x;
+    g.position.z = boat.z;
     g.position.y = (bow + stern + port + starboard) * 0.25 * 0.92;
 
     // Surge from the punting stroke, on top of the wave-driven pitch: while he
@@ -361,14 +370,19 @@
     // bow, and it settles back as the boat coasts through the recovery. Sign
     // follows the existing pitch convention — positive is bow-DOWN (it's built
     // from `stern - bow`) — so accelerating takes a negative term.
-    const surge = -stroke.accel * 0.022;
+    const surge = -boat.accel * 0.022;
     const pitch = Math.atan2(stern - bow, halfLen * 1.6) * 0.16 + surge;
     const roll = Math.atan2(starboard - port, BEAM) * 0.46;
+
+    // YXZ, not the default XYZ: yaw has to be applied FIRST so that pitch and
+    // roll then happen about the hull's own axes. Under XYZ a boat steered
+    // 90° would have its "pitch" tilting it sideways instead of bow-up.
+    g.rotation.order = 'YXZ';
+    // Steered heading, plus the small wander the swell always gave her.
+    const [slopeX] = waveSlope(boat.x, boat.z, elapsed);
+    g.rotation.y = boat.heading + slopeX * 0.03;
     g.rotation.x = pitch;
     g.rotation.z = roll;
-
-    const [slopeX] = waveSlope(0, 0, elapsed);
-    g.rotation.y = slopeX * 0.03;
   });
 </script>
 

@@ -8,7 +8,7 @@
     MeshStandardMaterial,
     Object3D,
   } from 'three';
-  import { stroke } from './stroke';
+  import { boat, boatToWorld, worldToBoat } from './boat';
   import { waveHeight, waveSlope } from './waves';
 
   /**
@@ -17,52 +17,56 @@
    * `waveHeight`, and a tilt solved from `waveSlope` so each one lies flat on
    * the water it's actually sitting on rather than hovering at a fixed angle.
    *
-   * They drift at the same `stroke.speed` as the ripples, because they're
-   * floating on the same water: if the boat gathers pace on the drive, the
-   * whole canal streams past faster, hyacinth included.
+   * They are anchored to the WATER, not to the boat: she sails past them. Any
+   * clump she leaves behind recycles to the rim of a wide ring around her,
+   * far enough out that the fog swallows the respawn.
    *
-   * Laid out in lanes down either side, never in the boat's corridor. Drift is
-   * purely along Z, so a clump's X never changes and nothing can wander into
-   * the hull — cheaper and more convincing than trying to shove mats aside.
+   * The old version kept them in fixed lanes down either side so they could
+   * never reach the hull — a trick that only worked while the boat couldn't
+   * steer. Now that she can, clumps get SHOVED ASIDE instead when she runs
+   * over them, which is both what really happens and better looking: she
+   * parts the mat as she goes.
    */
   let {
-    clusters = 34,
-    /** Nearest a clump may sit to the centreline — just outside the gunwale. */
-    laneInner = 1.9,
-    laneOuter = 14,
-    /** Clumps recycle to the far end once they drift past ±this in Z. */
-    reach = 24,
-  }: { clusters?: number; laneInner?: number; laneOuter?: number; reach?: number } = $props();
+    clusters = 90,
+    /** Clumps live within this radius; respawns land on its rim, deep in fog. */
+    reach = 45,
+  }: { clusters?: number; reach?: number } = $props();
 
   // svelte-ignore state_referenced_locally
   const REACH = reach;
+  /** Hull footprint the mats get pushed out of, with a little margin. */
+  const CLEAR_HALF_BEAM = 1.45;
+  const CLEAR_HALF_LEN = 4.3;
 
-  type Pad = { x: number; z: number; scale: number; yaw: number };
-  type Flower = { x: number; z: number; scale: number };
+  type Pad = { dx: number; dz: number; scale: number; yaw: number };
+  type Clump = { x: number; z: number; pads: Pad[]; bloom: number };
 
-  const pads: Pad[] = [];
-  const flowers: Flower[] = [];
+  function scatter(clump: Clump, x: number, z: number) {
+    clump.x = x;
+    clump.z = z;
+  }
 
   // svelte-ignore state_referenced_locally
-  for (let c = 0; c < clusters; c++) {
-    const side = Math.random() < 0.5 ? -1 : 1;
-    // svelte-ignore state_referenced_locally
-    const cx = side * (laneInner + Math.random() * (laneOuter - laneInner));
-    const cz = (Math.random() * 2 - 1) * REACH;
+  const clumps: Clump[] = Array.from({ length: clusters }, () => {
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.sqrt(Math.random()) * REACH; // sqrt keeps the disc even
     const petals = 3 + Math.floor(Math.random() * 4);
-    for (let i = 0; i < petals; i++) {
-      pads.push({
-        x: cx + (Math.random() * 2 - 1) * 0.42,
-        z: cz + (Math.random() * 2 - 1) * 0.42,
-        scale: 0.7 + Math.random() * 0.7,
-        yaw: Math.random() * Math.PI * 2,
-      });
-    }
+    const pads: Pad[] = Array.from({ length: petals }, () => ({
+      dx: (Math.random() * 2 - 1) * 0.42,
+      dz: (Math.random() * 2 - 1) * 0.42,
+      scale: 0.7 + Math.random() * 0.7,
+      yaw: Math.random() * Math.PI * 2,
+    }));
     // Roughly one clump in five is in bloom.
-    if (Math.random() < 0.2) {
-      flowers.push({ x: cx, z: cz, scale: 0.8 + Math.random() * 0.5 });
-    }
-  }
+    const bloom = Math.random() < 0.2 ? 0.8 + Math.random() * 0.5 : 0;
+    return { x: Math.cos(a) * r, z: Math.sin(a) * r, pads, bloom };
+  });
+
+  // Instance counts are fixed for the life of the mesh — a clump never gains
+  // or loses pads, it only ever moves.
+  const padTotal = clumps.reduce((n, c) => n + c.pads.length, 0);
+  const bloomTotal = clumps.filter((c) => c.bloom > 0).length;
 
   const padGeometry = (() => {
     const geo = new CircleGeometry(0.17, 9);
@@ -86,50 +90,63 @@
 
   useTask((delta) => {
     const mesh = padMesh;
+    const blooms = flowerMesh;
     if (!mesh) return;
     elapsed += delta;
-    const step = stroke.speed * delta;
 
     if (!coloured) {
-      for (let i = 0; i < pads.length; i++) {
-        mesh.setColorAt(i, PAD_GREENS[i % PAD_GREENS.length]);
-      }
+      for (let i = 0; i < padTotal; i++) mesh.setColorAt(i, PAD_GREENS[i % PAD_GREENS.length]);
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       coloured = true;
     }
 
-    for (let i = 0; i < pads.length; i++) {
-      const p = pads[i];
-      p.z += step;
-      if (p.z > REACH) p.z -= REACH * 2; // same lane, back to the far end
+    let p = 0;
+    let b = 0;
+    for (const clump of clumps) {
+      const dx = clump.x - boat.x;
+      const dz = clump.z - boat.z;
+      if (dx * dx + dz * dz > REACH * REACH) {
+        // Left astern: back to the rim at a fresh angle, out where the fog is.
+        const a = Math.random() * Math.PI * 2;
+        scatter(clump, boat.x + Math.cos(a) * REACH, boat.z + Math.sin(a) * REACH);
+      } else {
+        // Under the hull: shove the mat out to the side she is passing on.
+        const local = worldToBoat(clump.x, clump.z);
+        if (Math.abs(local.x) < CLEAR_HALF_BEAM && Math.abs(local.z) < CLEAR_HALF_LEN) {
+          const side = local.x >= 0 ? 1 : -1;
+          const pushed = boatToWorld(side * CLEAR_HALF_BEAM, local.z);
+          scatter(clump, pushed.x, pushed.z);
+        }
+      }
 
-      const [hx, hz] = waveSlope(p.x, p.z, elapsed);
-      dummy.position.set(p.x, waveHeight(p.x, p.z, elapsed) + 0.012, p.z);
-      // Lay the pad on the surface: the wave normal is (-hx, 1, -hz), which for
-      // slopes this gentle is just a small tilt of -hz about X and +hx about Z.
-      dummy.rotation.set(-hz, p.yaw, hx);
-      dummy.scale.setScalar(p.scale);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
+      for (const pad of clump.pads) {
+        const x = clump.x + pad.dx;
+        const z = clump.z + pad.dz;
+        const [hx, hz] = waveSlope(x, z, elapsed);
+        dummy.position.set(x, waveHeight(x, z, elapsed) + 0.012, z);
+        // Lay the pad on the surface: the wave normal is (-hx, 1, -hz), which
+        // for slopes this gentle is just a small tilt of -hz about X and +hx
+        // about Z.
+        dummy.rotation.set(-hz, pad.yaw, hx);
+        dummy.scale.setScalar(pad.scale);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(p++, dummy.matrix);
+      }
+
+      if (clump.bloom && blooms) {
+        const [hx, hz] = waveSlope(clump.x, clump.z, elapsed);
+        dummy.position.set(clump.x, waveHeight(clump.x, clump.z, elapsed) + 0.02, clump.z);
+        dummy.rotation.set(-hz, 0, hx);
+        dummy.scale.setScalar(clump.bloom);
+        dummy.updateMatrix();
+        blooms.setMatrixAt(b++, dummy.matrix);
+      }
     }
+
     mesh.instanceMatrix.needsUpdate = true;
-
-    const blooms = flowerMesh;
-    if (!blooms) return;
-    for (let i = 0; i < flowers.length; i++) {
-      const f = flowers[i];
-      f.z += step;
-      if (f.z > REACH) f.z -= REACH * 2;
-      const [hx, hz] = waveSlope(f.x, f.z, elapsed);
-      dummy.position.set(f.x, waveHeight(f.x, f.z, elapsed) + 0.02, f.z);
-      dummy.rotation.set(-hz, 0, hx);
-      dummy.scale.setScalar(f.scale);
-      dummy.updateMatrix();
-      blooms.setMatrixAt(i, dummy.matrix);
-    }
-    blooms.instanceMatrix.needsUpdate = true;
+    if (blooms) blooms.instanceMatrix.needsUpdate = true;
   });
 </script>
 
-<T.InstancedMesh bind:ref={padMesh} args={[padGeometry, padMaterial, pads.length]} />
-<T.InstancedMesh bind:ref={flowerMesh} args={[flowerGeometry, flowerMaterial, flowers.length]} />
+<T.InstancedMesh bind:ref={padMesh} args={[padGeometry, padMaterial, padTotal]} />
+<T.InstancedMesh bind:ref={flowerMesh} args={[flowerGeometry, flowerMaterial, bloomTotal]} />

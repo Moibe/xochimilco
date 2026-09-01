@@ -2,11 +2,14 @@
   import { T, useTask } from '@threlte/core';
   import { OrbitControls } from '@threlte/extras';
   import { Vector3 } from 'three';
+  import type { PerspectiveCamera } from 'three';
+  import type { OrbitControls as OrbitControlsImpl } from 'three/examples/jsm/controls/OrbitControls.js';
   import Lake from './Lake.svelte';
   import Lirios from './Lirios.svelte';
   import Ripples from './Ripples.svelte';
   import Trajinera from './Trajinera.svelte';
   import { advanceStroke } from './stroke';
+  import { advanceBoat, boat } from './boat';
 
   /**
    * The whole vignette: one trajinera, one canal, one midday sun — the
@@ -21,18 +24,50 @@
   const SUN = new Vector3(0.35, 0.86, 0.28).normalize();
   const SKY = '#bfe6f2';
 
-  // The scene root owns the punting clock, and is the ONLY caller that advances
-  // it — the poler, the hull's surge, the ripples and the hyacinth all just
-  // read it. Advancing it from any of those would step the stroke several times
-  // per frame and run the boat at a multiple of the speed it should have.
-  useTask((delta) => advanceStroke(delta));
+  let camera = $state.raw<PerspectiveCamera | undefined>();
+  let controls = $state.raw<OrbitControlsImpl | undefined>();
+  let lastX = boat.x;
+  let lastZ = boat.z;
+
+  // The scene root owns both clocks, and is the ONLY caller that advances
+  // them — the poler, the hull, the ripples and the hyacinth all just read.
+  // Advancing from any of those would step the stroke several times per frame
+  // and run the boat at a multiple of the speed it should have. Stroke first,
+  // then the boat, so the hull sees this frame's effort.
+  useTask((delta) => {
+    advanceStroke(delta);
+    advanceBoat(delta);
+
+    // Follow her by the DELTA rather than snapping the camera to a fixed
+    // offset: that keeps whatever angle and zoom the viewer orbited to, and
+    // it keeps OrbitControls' own spherical state consistent (it works off
+    // camera.position and target, so both have to move together).
+    const dx = boat.x - lastX;
+    const dz = boat.z - lastZ;
+    lastX = boat.x;
+    lastZ = boat.z;
+    if (camera && controls && (dx !== 0 || dz !== 0)) {
+      camera.position.x += dx;
+      camera.position.z += dz;
+      controls.target.x += dx;
+      controls.target.z += dz;
+    }
+  });
 </script>
 
 <T.FogExp2 attach="fog" args={[SKY, 0.014]} />
 <T.Color attach="background" args={[SKY]} />
 
-<T.PerspectiveCamera makeDefault position={[9, 5, 10]} fov={38} near={0.1} far={300}>
+<T.PerspectiveCamera
+  bind:ref={camera}
+  makeDefault
+  position={[9, 5, 10]}
+  fov={38}
+  near={0.1}
+  far={300}
+>
   <OrbitControls
+    bind:ref={controls}
     enableDamping
     dampingFactor={0.08}
     target={[0, 0.6, 0]}
@@ -50,5 +85,5 @@
 
 <Lake sun={SUN} />
 <Lirios />
-<Ripples driftX={0} driftZ={1} />
+<Ripples />
 <Trajinera {name} {hullColor} />

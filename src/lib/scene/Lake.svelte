@@ -1,6 +1,7 @@
 <script lang="ts">
   import { T, useTask } from '@threlte/core';
-  import { Color, DoubleSide, PlaneGeometry, ShaderMaterial, Vector3 } from 'three';
+  import { Color, DoubleSide, Mesh, PlaneGeometry, ShaderMaterial, Vector2, Vector3 } from 'three';
+  import { boat } from './boat';
   import { WAVE_COUNT, WAVE_GLSL, WAVE_UNIFORM } from './waves';
 
   /**
@@ -53,6 +54,10 @@
       uShallow: { value: new Color('#3e7d6c') },
       uFoam: { value: new Color('#d9ecdf') },
       uSky: { value: new Color('#bfe6f2') },
+      /** The plane rides with the boat, so the horizon fade has to measure
+       *  distance from HER, not from the world origin — otherwise she sails
+       *  out of the clear water and into her own fog ring. */
+      uCenter: { value: new Vector2(0, 0) },
     },
     vertexShader: /* glsl */ `
       ${WAVE_GLSL}
@@ -77,6 +82,7 @@
       uniform vec3 uShallow;
       uniform vec3 uFoam;
       uniform vec3 uSky;
+      uniform vec2 uCenter;
 
       varying vec3 vWorld;
       varying vec3 vNormal;
@@ -105,7 +111,7 @@
         color += vec3(1.0, 0.98, 0.9) * specular * 0.6;
 
         // Fade the rim into the sky/fog colour so the plane never shows an edge.
-        float dist = length(vWorld.xz);
+        float dist = length(vWorld.xz - uCenter);
         color = mix(color, uSky, smoothstep(30.0, 65.0, dist));
 
         gl_FragColor = vec4(color, 1.0);
@@ -123,9 +129,17 @@
     throw new Error('WAVE_UNIFORM y WAVE_COUNT no coinciden');
   }
 
+  let mesh = $state.raw<Mesh | undefined>();
+
   useTask((delta) => {
     material.uniforms.uTime.value += delta;
+    // Slide the plane along under the boat. The vertex shader samples the
+    // swell at WORLD xz, so moving the model matrix does NOT drag the wave
+    // pattern along — the water stays anchored and she really travels
+    // through it, while the finite plane is always centred on her.
+    if (mesh) mesh.position.set(boat.x, 0, boat.z);
+    material.uniforms.uCenter.value.set(boat.x, boat.z);
   });
 </script>
 
-<T.Mesh {geometry} {material} receiveShadow={false} />
+<T.Mesh bind:ref={mesh} {geometry} {material} receiveShadow={false} />
