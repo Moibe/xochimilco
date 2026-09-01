@@ -4,6 +4,7 @@
   import LakeScene from '$lib/scene/LakeScene.svelte';
   import { boatInput } from '$lib/scene/boat';
   import { loadCanalMask } from '$lib/scene/canalMask';
+  import { autopilot, releaseAutopilot } from '$lib/scene/autopilot';
 
   // Pick up whatever is currently drawn on the map, every time we come back to
   // the lake — you can go and re-cut a canal and sail it on your return.
@@ -39,6 +40,9 @@
   function onKeydown(e: KeyboardEvent) {
     if (!(e.key in KEYS) || e.metaKey || e.ctrlKey || e.altKey) return;
     e.preventDefault(); // arrows would otherwise scroll the panel
+    // Touching the tiller takes her off autopilot — otherwise the two of you
+    // write the same input axes every frame and fight over the helm.
+    if (autopilot.on) releaseAutopilot();
     held.add(e.key);
     apply();
   }
@@ -60,7 +64,21 @@
   // input axis stays pinned. Measured before this line existed — she came back
   // still turning, heading winding on forever with no way to stop her. The
   // input lives in a module, so it outlives this component and must be cleared.
-  onDestroy(releaseAll);
+  onDestroy(() => {
+    releaseAll();
+    releaseAutopilot();
+  });
+
+  let piloting = $state(false);
+  function togglePilot() {
+    if (autopilot.on) {
+      releaseAutopilot();
+    } else {
+      releaseAll(); // drop any held key so it cannot fight the autopilot
+      autopilot.on = true;
+    }
+    piloting = autopilot.on;
+  }
 </script>
 
 <svelte:window onkeydown={onKeydown} onkeyup={onKeyup} onblur={releaseAll} />
@@ -70,9 +88,12 @@
     <LakeScene />
   </Canvas>
 
-  <p class="helm">
-    <kbd>↑</kbd> impulsar · <kbd>↓</kbd> frenar · <kbd>←</kbd><kbd>→</kbd> timonear
-  </p>
+  <div class="helm">
+    <span><kbd>↑</kbd> impulsar · <kbd>↓</kbd> frenar · <kbd>←</kbd><kbd>→</kbd> timonear</span>
+    <button class="pilot" class:is-active={piloting} onclick={togglePilot}>
+      {piloting ? 'Piloto: sigue el canal' : 'Piloto'}
+    </button>
+  </div>
 </div>
 
 <style>
@@ -102,7 +123,30 @@
     border: 1px solid rgba(255, 255, 255, 0.55);
     border-radius: 10px;
     user-select: none;
+  }
+
+  .helm span {
     pointer-events: none;
+  }
+
+  .pilot {
+    padding: 0.2rem 0.6rem;
+    font: inherit;
+    font-size: 0.76rem;
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .pilot:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  .pilot.is-active {
+    color: #fff;
+    background: rgba(37, 99, 235, 0.65);
+    border-color: rgba(120, 170, 255, 0.8);
   }
 
   kbd {

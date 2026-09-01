@@ -11,6 +11,7 @@
   import Trajinera from './Trajinera.svelte';
   import { advanceStroke } from './stroke';
   import { advanceBoat, boat } from './boat';
+  import { autopilot, steerAlongCanal } from './autopilot';
 
   /**
    * The whole vignette: one trajinera, one canal, one midday sun — the
@@ -40,6 +41,9 @@
   // then the boat, so the hull sees this frame's effort.
   useTask((delta) => {
     advanceStroke(delta);
+    // The autopilot writes the same two input axes the keyboard does, so it
+    // has to run BEFORE the hull reads them.
+    if (autopilot.on) steerAlongCanal(delta);
     advanceBoat(delta);
 
     // Frame her once, on the first frame the refs exist. The camera's declared
