@@ -99,8 +99,10 @@
 
   // Arms hang from the shoulders into the lap. Facing -X puts the shoulder
   // line along Z.
-  const armR = poseLimb(new Vector3(0, 0.6, 0.155), new Vector3(-0.14, 0.4, 0.14), 0.253);
-  const armL = poseLimb(new Vector3(0, 0.6, -0.155), new Vector3(-0.14, 0.4, -0.14), 0.253);
+  // Short arms, hands high in the lap — see Personaje's note on why the long
+  // splayed version read as dangling limbs.
+  const armR = poseLimb(new Vector3(0, 0.6, 0.155), new Vector3(-0.11, 0.45, 0.145), 0.253);
+  const armL = poseLimb(new Vector3(0, 0.6, -0.155), new Vector3(-0.11, 0.45, -0.145), 0.253);
 
   let group = $state.raw<Group | undefined>();
   let headGroup = $state.raw<Group | undefined>();
@@ -127,8 +129,8 @@
 
   <T.Mesh geometry={armGeometry} material={SKIN} position={armR.position} rotation={armR.rotation} scale={armR.scale} />
   <T.Mesh geometry={armGeometry} material={SKIN} position={armL.position} rotation={armL.rotation} scale={armL.scale} />
-  <T.Mesh geometry={handGeometry} material={SKIN} position={[-0.14, 0.4, 0.14]} />
-  <T.Mesh geometry={handGeometry} material={SKIN} position={[-0.14, 0.4, -0.14]} />
+  <T.Mesh geometry={handGeometry} material={SKIN} position={[-0.11, 0.45, 0.145]} />
+  <T.Mesh geometry={handGeometry} material={SKIN} position={[-0.11, 0.45, -0.145]} />
 
   <!-- Pivots at the neck so the idle reads as a head tilt, not a lean.
        rotation.y turns the kit's -Z face inboard; the idle writes rotation.z. -->

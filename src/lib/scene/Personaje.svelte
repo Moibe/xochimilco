@@ -91,15 +91,20 @@
     };
   }
 
-  // Arms hang at the sides, angled a touch outboard so they clear the torso.
+  // Arms hang at the sides, short and tucked close. The reference's hands stop
+  // about level with the waist, not down the thigh, and its arms lie against
+  // the body — mine were 0.23 long and splayed 0.035 outboard, and the gap plus
+  // the drop is what made them read as long dangling limbs.
+  const HAND_Y = 0.545;
+  const ARM_OUT = 0.018;
   const armR = poseLimb(
     new Vector3(SHOULDER_X, SHOULDER_Y, -0.01),
-    new Vector3(SHOULDER_X + 0.035, 0.5, 0.0),
+    new Vector3(SHOULDER_X + ARM_OUT, HAND_Y, 0.0),
     0.253
   );
   const armL = poseLimb(
     new Vector3(-SHOULDER_X, SHOULDER_Y, -0.01),
-    new Vector3(-SHOULDER_X - 0.035, 0.5, 0.0),
+    new Vector3(-SHOULDER_X - ARM_OUT, HAND_Y, 0.0),
     0.253
   );
   const legR = poseLimb(new Vector3(HIP_X, HIP_Y, 0), new Vector3(HIP_X, 0.095, 0), 0.332);
@@ -116,8 +121,8 @@
   <T.Mesh geometry={torsoGeometry} material={SHIRT} />
   <T.Mesh geometry={armGeometry} material={SKIN} position={armR.position} rotation={armR.rotation} scale={armR.scale} />
   <T.Mesh geometry={armGeometry} material={SKIN} position={armL.position} rotation={armL.rotation} scale={armL.scale} />
-  <T.Mesh geometry={handGeometry} material={SKIN} position={[SHOULDER_X + 0.035, 0.5, 0]} />
-  <T.Mesh geometry={handGeometry} material={SKIN} position={[-SHOULDER_X - 0.035, 0.5, 0]} />
+  <T.Mesh geometry={handGeometry} material={SKIN} position={[SHOULDER_X + ARM_OUT, HAND_Y, 0]} />
+  <T.Mesh geometry={handGeometry} material={SKIN} position={[-SHOULDER_X - ARM_OUT, HAND_Y, 0]} />
 
   <T.Group position={[0, HEAD_Y_STANDING, 0]}>
     <T.Mesh geometry={headGeometry} material={SKIN} />
