@@ -1,5 +1,13 @@
 import { CanvasTexture, LinearFilter, type Texture } from 'three';
-import { MAP_H, MAP_W, METRES_PER_UNIT, paintStrokes, worldToMap, type Stroke } from '$lib/canales';
+import {
+  MAP_H,
+  MAP_W,
+  METRES_PER_UNIT,
+  STORE_KEY,
+  paintStrokes,
+  worldToMap,
+  type Stroke,
+} from '$lib/canales';
 
 /**
  * The drawn canal map, turned into something the 3D world can use: one
@@ -99,14 +107,41 @@ export function buildCanalMask(strokes: Stroke[]) {
   canalMask.version += 1;
 }
 
-/** Fetch the saved map and build the mask from it. */
+/**
+ * Fetch the saved map and build the mask from it.
+ *
+ * The server is authoritative, but if it comes back EMPTY this falls back to
+ * the browser's own `localStorage` copy — exactly what the map editor already
+ * does, and for the same reason: the two are independent backups of the same
+ * drawing, and either one going missing shouldn't blank out the other. This
+ * matters more here than it looks: it was the actual bug behind the world and
+ * the minimap both going blank after the server's `data/canales.json` was
+ * cleared during testing, even though the browser's own drawing was untouched
+ * the whole time. Without this fallback, that class of problem has no
+ * self-healing path — the world stays blank until someone redraws the canal
+ * from scratch on the server, when the drawing was sitting right there in the
+ * same browser.
+ */
 export async function loadCanalMask(fetcher: typeof fetch = fetch) {
   try {
     const res = await fetcher('/api/canales');
-    if (!res.ok) return;
-    const data = await res.json();
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.v === 1 && Array.isArray(data.strokes) && data.strokes.length > 0) {
+        buildCanalMask(data.strokes);
+        return;
+      }
+    }
+  } catch {
+    // No server reachable: fall through to the local backup.
+  }
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
     if (data?.v === 1 && Array.isArray(data.strokes)) buildCanalMask(data.strokes);
   } catch {
-    // No map reachable: the scene stays open water, which is a fine fallback.
+    // No local backup either, or it's corrupt: the scene stays open water,
+    // which is a fine fallback — a lake with nothing drawn on it yet.
   }
 }

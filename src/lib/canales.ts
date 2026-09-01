@@ -22,6 +22,15 @@ export const METRES_PER_UNIT = 0.5;
 export const WATER = '#3e7d6c';
 export const LAND = '#66854f';
 
+/**
+ * localStorage key for the drawing's instant/offline backup. Shared here
+ * rather than living only in the editor page: `canalMask.ts` also needs to
+ * fall back to it when the server has nothing, which is exactly what
+ * happens if the server file is ever missing or cleared — a browser tab that
+ * drew a canal keeps working from its own backup instead of going blank.
+ */
+export const STORE_KEY = 'xochimilco:canales:v1';
+
 export type Mode = 'canal' | 'tierra';
 /** A brush stroke: a flat [x0,y0,x1,y1,…] path in map units. */
 export type Stroke = { mode: Mode; points: number[] };

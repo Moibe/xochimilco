@@ -6,6 +6,7 @@
     MAP_H,
     MAP_W,
     METRES_PER_UNIT,
+    STORE_KEY,
     mapToWorld,
     paintLatest,
     paintStrokes,
@@ -28,7 +29,6 @@
    * vista. De ahí salen gratis el deshacer y una persistencia de unos KB.
    */
 
-  const STORE_KEY = 'xochimilco:canales:v1';
   /** Distancia mínima entre puntos guardados — evita trazos de mil puntos. */
   const MIN_SEGMENT = 2.5;
 
