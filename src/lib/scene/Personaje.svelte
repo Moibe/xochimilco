@@ -91,12 +91,16 @@
     };
   }
 
-  // Arms hang at the sides, short and tucked close. The reference's hands stop
-  // about level with the waist, not down the thigh, and its arms lie against
-  // the body — mine were 0.23 long and splayed 0.035 outboard, and the gap plus
-  // the drop is what made them read as long dangling limbs.
-  const HAND_Y = 0.545;
-  const ARM_OUT = 0.018;
+  // Arms hang at the sides with the hands beside the hips.
+  //
+  // Measured off the reference rather than guessed: there the hands end BELOW
+  // the shirt hem, level with the top of the thigh. The shirt hem here is at
+  // 0.42, so hands at 0.375 put them just under it, beside the hip mass —
+  // which is also simply where hands hang. Two earlier passes had them at 0.50
+  // and then 0.545, i.e. above the hem entirely, which is why the arms looked
+  // stunted. ARM_OUT keeps the hand clear of the hip's 0.174 radius.
+  const HAND_Y = 0.375;
+  const ARM_OUT = 0.03;
   const armR = poseLimb(
     new Vector3(SHOULDER_X, SHOULDER_Y, -0.01),
     new Vector3(SHOULDER_X + ARM_OUT, HAND_Y, 0.0),
