@@ -1,135 +1,231 @@
-import { LatheGeometry, SphereGeometry, TorusGeometry, Vector2 } from 'three';
+import {
+  BufferGeometry,
+  CapsuleGeometry,
+  CylinderGeometry,
+  LatheGeometry,
+  SphereGeometry,
+  TorusGeometry,
+  Vector2,
+} from 'three';
 
 /**
- * The chibi character kit — shared geometry for the trajinero and the
- * passengers, in the "Spooky Express" register the user asked for: a head one
- * third of total height, no neck, one closed bell for the whole body, stubby
- * blob limbs, two big dark eyes with a white glint, hair as a single helmet
- * mass. All numbers come from a synthesized construction spec whose reach and
- * clearance arithmetic was re-verified against the boat's real dimensions
- * (bench 0.31, table half-width 0.4025, roof clearance 1.59, half-beam 1.15).
+ * The chibi character kit, in the "miniyo by cactus" register the user asked
+ * for — the collectible-vinyl look: a big rounded-CUBE head with a flat face,
+ * a small real body with arms and legs, and a face carrying brows, a button
+ * nose and a hint of a smile.
  *
- * Frames: BODY parts are feet-relative (origin = deck plank top). Everything
- * on the HEAD (eyes, glints, hair, sombrero) is HEAD-CENTRED — those offsets
- * are identical for the standing and seated variants, so one set of constants
- * serves both; each component mounts them inside a group placed at its own
- * head centre (y 1.045 standing, 1.040 seated).
+ * What changed from the first pass, straight off the reference photos:
+ *   · head: sphere → superellipsoid. A vinyl head is a squircle, and the flat
+ *     front is what gives you somewhere to actually put a face.
+ *   · face: gained a nose, thick brows and a smile. The brows do most of the
+ *     characterisation — they are the boldest thing on those faces.
+ *   · eyes: solid black now. The reference eyes have no painted white glint;
+ *     what you see is a specular sheen, so it comes from the material instead.
+ *   · body: bell/poncho → torso + arms + legs + shoes. These figures have real
+ *     little bodies; the old bell hid everything below the chin.
  *
- * Geometries are module-level singletons on purpose: five characters share
- * one set of buffers, and materials (the only thing that varies) stay in the
- * components.
+ * Frames: BODY parts are feet-relative (origin = the deck plank top).
+ * Everything on the HEAD is HEAD-CENTRED, so one set of face constants serves
+ * the standing and seated builds alike; each component mounts them in a group
+ * placed at its own head centre.
  */
 
-export const HEAD_R = 0.21;
+// ---- head ------------------------------------------------------------------
+export const HEAD_HALF = { x: 0.26, y: 0.27, z: 0.245 };
 /** Head centre, feet-relative. */
-export const HEAD_Y_STANDING = 1.045;
-export const HEAD_Y_SEATED = 1.04;
-/** Top of the bell (the "neck" the head sinks into), feet-relative. */
-export const NECK_Y_STANDING = 0.862;
-export const NECK_Y_SEATED = 0.858;
+export const HEAD_Y_STANDING = 1.05;
+export const HEAD_Y_SEATED = 0.9;
+/** Top of the torso the head sinks into — there is no neck, by design. */
+export const NECK_Y_STANDING = 0.8;
+export const NECK_Y_SEATED = 0.66;
 
+/**
+ * A sphere pushed out onto a superellipsoid: |x|^e + |y|^e + |z|^e = 1.
+ * At e = 2 this is the sphere it started as; by e ≈ 4 it is the rounded cube a
+ * vinyl head actually is, with faces flat enough to carry features and corners
+ * still soft. Doing it by deformation rather than a rounded-box primitive keeps
+ * the sphere's UV-style topology, so partial sweeps (the hair caps below) come
+ * out of the same helper.
+ */
+export function superellipsoid(
+  half: { x: number; y: number; z: number },
+  exponent = 4.2,
+  widthSegments = 32,
+  heightSegments = 24,
+  thetaStart = 0,
+  thetaLength = Math.PI,
+  phiStart = 0,
+  phiLength = Math.PI * 2
+): BufferGeometry {
+  const geo = new SphereGeometry(1, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const len = Math.hypot(x, y, z) || 1;
+    const nx = x / len;
+    const ny = y / len;
+    const nz = z / len;
+    // Radius that lands this direction on the superellipsoid's surface.
+    const denom =
+      Math.abs(nx) ** exponent + Math.abs(ny) ** exponent + Math.abs(nz) ** exponent;
+    const r = 1 / denom ** (1 / exponent);
+    pos.setXYZ(i, nx * r * half.x, ny * r * half.y, nz * r * half.z);
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  return geo;
+}
+
+export const headGeometry = superellipsoid(HEAD_HALF);
+
+// ---- the face, head-centred. The kit faces -Z. ------------------------------
+// The face is nearly flat out to ~40% of the half-width (that is the point of
+// the squircle), so everything below sits just proud of z = -0.244 and can
+// never z-fight.
+
+/** Scaled per-mesh: a big soft-cornered oval, the dominant feature. */
+export const eyeGeometry = superellipsoid({ x: 0.065, y: 0.082, z: 0.028 }, 3.0, 20, 16);
+export const EYE_POSITIONS: [number, number, number][] = [
+  [0.105, -0.035, -0.232],
+  [-0.105, -0.035, -0.232],
+];
+
+/**
+ * Brows. Thick, dark and slightly tilted — on the reference faces these carry
+ * more of the character than the eyes do, and leaving them off is most of why
+ * the first pass read as blank.
+ */
+export const browGeometry = superellipsoid({ x: 0.072, y: 0.017, z: 0.02 }, 3.0, 16, 10);
+export const BROWS: { pos: [number, number, number]; rotZ: number }[] = [
+  // Sits 0.041 clear of the eye tops. Closer and the brow merges into the eye
+  // as one dark band; the reference faces keep a visible gap between them.
+  { pos: [0.105, 0.105, -0.236], rotZ: -0.1 },
+  { pos: [-0.105, 0.105, -0.236], rotZ: 0.1 },
+];
+
+/** The button nose — small, central, and the thing that says "vinyl toy". */
+export const noseGeometry = superellipsoid({ x: 0.036, y: 0.032, z: 0.03 }, 2.6, 16, 12);
+export const NOSE_POSITION: [number, number, number] = [0, -0.078, -0.243];
+
+/**
+ * A hint of a smile: a shallow arc of a torus. Barely a few pixels at scene
+ * distance, but the camera can be orbited right up to the boat, and a mouthless
+ * face reads as eerie the moment you do.
+ */
+export const mouthGeometry = (() => {
+  const geo = new TorusGeometry(0.052, 0.0075, 6, 20, Math.PI * 0.62);
+  // Rotate the arc so its opening faces up — a smile, not a frown.
+  geo.rotateZ(Math.PI * 0.69);
+  return geo;
+})();
+export const MOUTH_POSITION: [number, number, number] = [0, -0.138, -0.238];
+
+// ---- hair ------------------------------------------------------------------
+/**
+ * A shell over the crown, cut just ABOVE the brows. Its rim lands at head-y
+ * +0.129 against brow tops at +0.122 — that gap is the whole margin, and closing it
+ * hides the face. Full 360°, which is safe precisely because it stops above
+ * every feature.
+ */
+export const hairCapGeometry = superellipsoid(
+  { x: HEAD_HALF.x + 0.014, y: HEAD_HALF.y + 0.012, z: HEAD_HALF.z + 0.014 },
+  4.2,
+  32,
+  20,
+  0,
+  1.14
+);
+/**
+ * Length down the back and sides for long hair. The partial phi sweep is not
+ * cosmetic: three's sphere phi starts at +Z and the kit faces -Z, so sweeping
+ * ±0.62π about the BACK leaves a 137° opening for the face. Sweeping the full
+ * circle (which an earlier version did) walls the face in behind a solid block
+ * of hair — it renders as a faceless helmet.
+ *
+ * Its material must be DoubleSide: the open sweep leaves two raw edges.
+ */
+export const hairLongGeometry = superellipsoid(
+  { x: HEAD_HALF.x + 0.016, y: HEAD_HALF.y + 0.014, z: HEAD_HALF.z + 0.016 },
+  4.2,
+  32,
+  22,
+  0,
+  2.15,
+  -Math.PI * 0.62,
+  Math.PI * 1.24
+);
+/** Masses that fall beside the face — the reference's centre-parted look. */
+export const hairSideGeometry = superellipsoid({ x: 0.075, y: 0.2, z: 0.11 }, 3.0, 16, 14);
+export const HAIR_SIDES: [number, number, number][] = [
+  [0.245, -0.2, -0.02],
+  [-0.245, -0.2, -0.02],
+];
+
+// ---- body ------------------------------------------------------------------
 const profile = (pts: [number, number][]) => pts.map(([x, y]) => new Vector2(x, y));
 
 /**
- * The standing poncho bell: torso, garment and hips as ONE closed watertight
- * lathe — a stacked-primitives union shows a seam and can't give the
- * reference's continuous flare. 28 segments because the hem shoulder facets
- * visibly under the scene's directional light at 20.
+ * A small real torso: near-cylindrical with a rounded top, the head sinking
+ * into its cap. Nothing like the old bell, which swallowed the whole figure.
  */
-export const bellStandingGeometry = new LatheGeometry(
+// Shoulder radius 0.19 makes the head about 1.35x the shoulder width, which
+// is what the reference figures actually are. At 0.157 the ratio was 1.68 and
+// they read as bobbleheads on sticks — the head was not too big, the body was
+// too narrow.
+export const torsoGeometry = new LatheGeometry(
   profile([
-    [0.0, 0.055], [0.155, 0.055], [0.225, 0.075], [0.255, 0.13], [0.26, 0.18],
-    [0.252, 0.26], [0.236, 0.36], [0.216, 0.47], [0.198, 0.57], [0.183, 0.66],
-    [0.171, 0.74], [0.162, 0.8], [0.152, 0.84], [0.115, 0.856], [0.06, 0.86],
-    [0.0, 0.862],
+    [0.0, 0.42], [0.12, 0.42], [0.168, 0.452], [0.182, 0.51], [0.19, 0.6],
+    [0.188, 0.68], [0.176, 0.735], [0.148, 0.775], [0.086, 0.795], [0.0, 0.802],
   ]),
   28
 );
-
-/**
- * The seated bell: hem raised to drape 0.085 over the bench edge, domed
- * underside so it isn't a flat floating disc from a low camera, and narrower
- * (0.235 max, times the component's 0.94 x-scale) so at BENCH_X 0.91 the
- * outboard hem stays inside the 1.15 half-beam — the wide standing hem would
- * overhang the gunwale by 6 cm.
- */
-export const bellSeatedGeometry = new LatheGeometry(
+/** Seated: the same torso, shifted so its hips land on a 0.31 m bench. */
+export const torsoSeatedGeometry = new LatheGeometry(
   profile([
-    [0.0, 0.225], [0.09, 0.228], [0.15, 0.24], [0.205, 0.258], [0.23, 0.3],
-    [0.235, 0.35], [0.228, 0.43], [0.214, 0.52], [0.198, 0.61], [0.184, 0.69],
-    [0.172, 0.755], [0.162, 0.805], [0.15, 0.84], [0.112, 0.852], [0.058, 0.856],
-    [0.0, 0.858],
+    [0.0, 0.28], [0.12, 0.28], [0.168, 0.312], [0.182, 0.37], [0.19, 0.46],
+    [0.188, 0.54], [0.176, 0.595], [0.148, 0.635], [0.086, 0.655], [0.0, 0.662],
   ]),
   28
 );
+/** The poler's faja, worn at the waist. A ring, NOT the torso rescaled: the
+ *  lathe's profile carries its own heights, so scaling it in Y drags the whole
+ *  band down to the origin and it floats off as a loose disc. */
+export const sashGeometry = new CylinderGeometry(0.193, 0.186, 0.075, 28, 1, true);
 
-/** The single largest curved silhouette on screen — 16 facets would show. */
-export const headGeometry = new SphereGeometry(HEAD_R, 24, 18);
+/** Limbs are capsules — rounded ends mean no joint ever shows a hard rim. */
+export const armGeometry = new CapsuleGeometry(0.049, 0.155, 4, 12);
+export const legGeometry = new CapsuleGeometry(0.066, 0.2, 4, 12);
+export const handGeometry = superellipsoid({ x: 0.05, y: 0.052, z: 0.05 }, 2.6, 14, 12);
+/** Shoes: a rounded wedge, longer than wide, like the reference sneakers. */
+export const shoeGeometry = superellipsoid({ x: 0.072, y: 0.045, z: 0.115 }, 3.2, 18, 14);
 
-// ---- the face, head-centred. The kit faces -Z. -------------------------
-/** Scaled per-mesh to (1, 1.32, 0.45): a 0.10 × 0.13 ovoid, 45 mm deep. */
-export const eyeGeometry = new SphereGeometry(0.05, 12, 10);
-export const EYE_SCALE: [number, number, number] = [1, 1.32, 0.45];
-/**
- * Standing 17 mm proud of the skull; the per-side yaw (∓0.38) aligns each
- * ovoid's flattened axis with the head's outward normal at that point.
- */
-export const EYE_POSITIONS: { pos: [number, number, number]; rotY: number }[] = [
-  { pos: [0.076, -0.007, -0.19], rotY: -0.38 },
-  { pos: [-0.076, -0.007, -0.19], rotY: 0.38 },
-];
-
-export const glintGeometry = new SphereGeometry(0.016, 8, 6);
-/** Upper-inner of each eye, clear of both skull and eye front face. */
-export const GLINT_POSITIONS: [number, number, number][] = [
-  [0.058, 0.03, -0.212],
-  [-0.058, 0.03, -0.212],
-];
-
-// ---- hair: one solid helmet, never strands ------------------------------
-/**
- * Fringe cap. Its rim (centre + 0.222·cos 1.30 = +0.059) lands exactly on the
- * top edge of the eye ovals — the fringe kisses the eyes, the classic chibi
- * read. OMIT when the figure wears the sombrero.
- */
-export const hairFringeGeometry = new SphereGeometry(0.222, 20, 12, 0, Math.PI * 2, 0, 1.3);
-/**
- * Jaw-length bob mass around the back and sides, leaving a 151° face opening.
- * KEEP under a hat. Its material must be DoubleSide: the partial phi sweep
- * leaves two raw edges and you'd otherwise see through the head from
- * three-quarter-rear.
- */
-export const hairBackGeometry = new SphereGeometry(
-  0.224, 20, 14, -Math.PI * 0.58, Math.PI * 1.16, 0, 2.0
-);
-
-// ---- scarf ----------------------------------------------------------------
-/**
- * Collar torus. Its outer radius (0.165 + 0.045 = 0.21) exactly matches the
- * head's, so in profile the collar lines up with the skull — this part is
- * what makes "no neck" invisible from every angle. BODY-frame part: sits at
- * the bell cap, not inside the head group.
- */
-export const scarfRingGeometry = new TorusGeometry(0.165, 0.045, 8, 20);
+export const SHOULDER_Y = 0.73;
+/** On the torso's surface at shoulder height, so arms emerge rather than
+ *  sprouting from inside the chest. */
+export const SHOULDER_X = 0.17;
+export const HIP_Y = 0.46;
+export const HIP_X = 0.09;
 
 // ---- sombrero, head-centred ------------------------------------------------
 /**
- * Crown AND brim in one revolved profile with real thickness, including the
- * upturned brim edge — a cylinder brim plus dome crown reads as a lampshade
- * on a ball. Passengers wear it at 0.78 x/z scale.
+ * Crown and brim in one revolved profile with real thickness, including the
+ * upturned edge — a cylinder brim plus a dome crown reads as a lampshade on a
+ * ball. Sized up for the bigger squircle head.
  */
 export const sombreroGeometry = new LatheGeometry(
   profile([
-    [0.0, 0.3], [0.07, 0.296], [0.11, 0.281], [0.128, 0.252], [0.134, 0.221],
-    [0.176, 0.209], [0.246, 0.205], [0.306, 0.209], [0.332, 0.219], [0.316, 0.227],
-    [0.258, 0.221], [0.192, 0.221], [0.146, 0.229], [0.142, 0.262], [0.116, 0.287],
-    [0.058, 0.296], [0.0, 0.298],
+    [0.0, 0.36], [0.085, 0.355], [0.13, 0.338], [0.152, 0.305], [0.159, 0.272],
+    [0.205, 0.259], [0.285, 0.254], [0.35, 0.259], [0.378, 0.27], [0.362, 0.279],
+    [0.3, 0.272], [0.225, 0.272], [0.172, 0.281], [0.168, 0.316], [0.138, 0.344],
+    [0.07, 0.355], [0.0, 0.358],
   ]),
   28
 );
-export const sombreroBandGeometry = new TorusGeometry(0.138, 0.014, 8, 22);
+export const sombreroBandGeometry = new TorusGeometry(0.162, 0.016, 8, 22);
 /** Band height above the head centre (wraps the crown just over the brim). */
-export const SOMBRERO_BAND_Y = 0.239;
+export const SOMBRERO_BAND_Y = 0.292;
 
 /** Stubby limbs must stay within this reach or a hand detaches from the pole. */
-export const ARM_MAX = 0.28;
+export const ARM_MAX = 0.34;

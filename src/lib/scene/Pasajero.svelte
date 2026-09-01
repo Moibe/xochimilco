@@ -1,100 +1,104 @@
 <script lang="ts">
   import { T, useTask } from '@threlte/core';
+  import { DoubleSide, Euler, Group, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
   import {
-    DoubleSide,
-    Group,
-    MeshBasicMaterial,
-    MeshStandardMaterial,
-    SphereGeometry,
-    Vector3,
-  } from 'three';
-  import {
+    BROWS,
     EYE_POSITIONS,
-    EYE_SCALE,
-    GLINT_POSITIONS,
+    HAIR_SIDES,
     HEAD_Y_SEATED,
+    MOUTH_POSITION,
     NECK_Y_SEATED,
+    NOSE_POSITION,
     SOMBRERO_BAND_Y,
-    bellSeatedGeometry,
+    armGeometry,
+    browGeometry,
     eyeGeometry,
-    glintGeometry,
-    hairBackGeometry,
-    hairFringeGeometry,
+    hairLongGeometry,
+    hairCapGeometry,
+    hairSideGeometry,
+    handGeometry,
     headGeometry,
-    scarfRingGeometry,
+    legGeometry,
+    mouthGeometry,
+    noseGeometry,
+    shoeGeometry,
     sombreroBandGeometry,
     sombreroGeometry,
+    torsoSeatedGeometry,
   } from './chibi';
-  import { limb } from './figures';
 
   /**
-   * A seated chibi passenger — same kit as the trajinero, posed sitting.
+   * A seated passenger in the same miniyo/vinyl kit as the poler: squircle
+   * head, brows, button nose, a small real body with legs bent onto the deck.
    *
-   * The body and limbs are authored facing -X (inboard for the starboard
-   * bench), exactly like the old figure, so `Trajinera.svelte` keeps its
-   * existing placement and its 0/π port-side turn with ZERO edits. The bell
-   * is a lathe and doesn't care about facing; the ONLY parts that do are the
-   * face and hair, so those live in a headGroup carrying rotation.y = +π/2
-   * (which maps the kit's -Z face onto -X).
-   *
-   * Clearances, checked against the boat's real numbers: seated hem at
-   * BENCH_X 0.91 reaches world x 1.131 vs the 1.15 half-beam (the standing
-   * hem would overhang by 6 cm — that's why the seated bell is narrower and
-   * carries a 0.94 x-scale); knees/feet/hands all stay clear of the table's
-   * 0.4025 half-width; hatted crown 1.340 against 1.59 of roof clearance.
+   * Authored facing -X (inboard for the starboard bench), exactly as before,
+   * so `Trajinera.svelte` keeps its placement and its 0/π port-side turn with
+   * no edits. Only the face and hair care about the kit's -Z convention, so
+   * they live in a headGroup carrying rotation.y = +π/2.
    */
   let {
     shirt = '#e6ecf4',
-    skin = '#c98d63',
+    skin = '#d09a6e',
     hat = false,
     /** Offsets the idle sway so a benchful of people don't move in lockstep. */
     phase = 0,
   }: { shirt?: string; skin?: string; hat?: boolean; phase?: number } = $props();
 
   // svelte-ignore state_referenced_locally
-  const PONCHO = new MeshStandardMaterial({ color: shirt, roughness: 0.92 });
+  const SHIRT = new MeshStandardMaterial({ color: shirt, roughness: 0.9 });
   // svelte-ignore state_referenced_locally
-  const SKIN = new MeshStandardMaterial({ color: skin, roughness: 0.75 });
+  const SKIN = new MeshStandardMaterial({ color: skin, roughness: 0.78 });
   // svelte-ignore state_referenced_locally
   const IDLE_PHASE = phase;
-  // Scarf and hair colours rotate deterministically off the idle phase so the
-  // four passengers differ without another prop.
-  const SCARF_TONES = ['#f2b632', '#3aa655', '#2f7fc1', '#e0503f'];
-  const HAIR_TONES = ['#241a14', '#4a2f1e', '#6b4a2a'];
-  const pick = (arr: string[]) => arr[Math.abs(Math.round(IDLE_PHASE * 7)) % arr.length];
 
-  const HAIR = new MeshStandardMaterial({ color: pick(HAIR_TONES), roughness: 1, side: DoubleSide });
-  const EYE = new MeshStandardMaterial({ color: '#191720', roughness: 0.35 });
-  const GLINT = new MeshBasicMaterial({ color: '#ffffff' });
-  const SCARF = new MeshStandardMaterial({ color: pick(SCARF_TONES), roughness: 0.85 });
-  const PANTS = new MeshStandardMaterial({ color: '#42506b', roughness: 0.88 });
-  const SHOE = new MeshStandardMaterial({ color: '#3f3226', roughness: 0.9 });
+  // Hair colour and length rotate off the idle phase, so four passengers
+  // differ without another prop to thread through Trajinera.
+  const HAIR_TONES = ['#2b1d14', '#4a2f1e', '#6b4a2a', '#1d1712'];
+  const pick = <T,>(arr: T[]) => arr[Math.abs(Math.round(IDLE_PHASE * 7)) % arr.length];
+  const HAIR_COLOUR = pick(HAIR_TONES);
+  const HAIR = new MeshStandardMaterial({ color: HAIR_COLOUR, roughness: 0.95 });
+  /** The long-hair shell has an open phi sweep, so its two raw edges need
+   *  DoubleSide or you can see straight through the head from behind. */
+  const HAIR_OPEN = new MeshStandardMaterial({
+    color: HAIR_COLOUR,
+    roughness: 0.95,
+    side: DoubleSide,
+  });
+  const longHair = Math.round(IDLE_PHASE * 7) % 2 === 0;
+
+  const EYE = new MeshStandardMaterial({ color: '#141118', roughness: 0.22 });
+  const MOUTH = new MeshStandardMaterial({ color: '#7c4634', roughness: 0.6 });
+  const PANTS = new MeshStandardMaterial({ color: '#48597a', roughness: 0.9 });
+  const SHOE = new MeshStandardMaterial({ color: '#efece4', roughness: 0.85 });
   const STRAW = new MeshStandardMaterial({ color: '#ddc890', roughness: 0.9 });
   const BAND = new MeshStandardMaterial({ color: '#8a6b3f', roughness: 0.9 });
 
-  // ---- legs: hips at exactly the 0.31 bench top, thighs level -------------
-  // On a 0.31 bench with 0.28 legs, sloping the thighs folds the figure
-  // double; level thighs with knees apart is how you sit on a low bench.
-  const thighR = limb(new Vector3(0, 0.31, 0.088), new Vector3(-0.235, 0.3, 0.098), 0.072, 0.066);
-  const thighL = limb(new Vector3(0, 0.31, -0.088), new Vector3(-0.235, 0.3, -0.098), 0.072, 0.066);
-  const shinR = limb(new Vector3(-0.235, 0.3, 0.098), new Vector3(-0.275, 0.075, 0.098), 0.06, 0.05);
-  const shinL = limb(new Vector3(-0.235, 0.3, -0.098), new Vector3(-0.275, 0.075, -0.098), 0.06, 0.05);
-  const kneeGeometry = new SphereGeometry(0.066, 10, 8);
-  const footGeometry = new SphereGeometry(0.072, 12, 10);
+  /** Pose a capsule (built along +Y) to run from one point to another. */
+  function poseLimb(from: Vector3, to: Vector3, restLength: number) {
+    const dir = new Vector3().subVectors(to, from);
+    const mid = new Vector3().addVectors(from, to).multiplyScalar(0.5);
+    const e = new Euler().setFromQuaternion(
+      new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir.clone().normalize())
+    );
+    return {
+      position: [mid.x, mid.y, mid.z] as [number, number, number],
+      rotation: [e.x, e.y, e.z] as [number, number, number],
+      scale: [1, dir.length() / restLength, 1] as [number, number, number],
+    };
+  }
 
-  // ---- arms folded in the lap ----------------------------------------------
-  const armR = limb(new Vector3(0, 0.795, 0.155), new Vector3(-0.135, 0.585, 0.14), 0.055, 0.045);
-  const armL = limb(new Vector3(0, 0.795, -0.155), new Vector3(-0.135, 0.585, -0.14), 0.055, 0.045);
-  const handGeometry = new SphereGeometry(0.055, 10, 8);
-  const shoulderGeometry = new SphereGeometry(0.058, 10, 8);
+  // Hips at exactly the 0.31 m bench top. Thighs run inboard and near level —
+  // on a bench this low, sloping them would fold the figure double — then the
+  // shins drop to the deck.
+  const thighR = poseLimb(new Vector3(0, 0.31, 0.095), new Vector3(-0.3, 0.29, 0.1), 0.332);
+  const thighL = poseLimb(new Vector3(0, 0.31, -0.095), new Vector3(-0.3, 0.29, -0.1), 0.332);
+  const shinR = poseLimb(new Vector3(-0.3, 0.29, 0.1), new Vector3(-0.33, 0.09, 0.1), 0.332);
+  const shinL = poseLimb(new Vector3(-0.3, 0.29, -0.1), new Vector3(-0.33, 0.09, -0.1), 0.332);
 
-  const scarfTail = limb(
-    new Vector3(0.09, 0.872, 0.06),
-    new Vector3(0.196, 0.654, 0.158),
-    0.045,
-    0.026
-  );
-  const scarfTailTipGeometry = new SphereGeometry(0.028, 8, 6);
+  // Arms hang from the shoulders into the lap. Facing -X puts the shoulder
+  // line along Z.
+  const armR = poseLimb(new Vector3(0, 0.6, 0.155), new Vector3(-0.14, 0.4, 0.14), 0.253);
+  const armL = poseLimb(new Vector3(0, 0.6, -0.155), new Vector3(-0.14, 0.4, -0.14), 0.253);
 
   let group = $state.raw<Group | undefined>();
   let headGroup = $state.raw<Group | undefined>();
@@ -102,80 +106,60 @@
 
   useTask((delta) => {
     elapsed += delta;
-    // A slow look-around, plus a little head tilt on a second rhythm. On a
-    // head this size a 0.05 rad tilt is a visible, charming few px of motion.
+    // A slow look-around, plus a head tilt on a second rhythm. On a head this
+    // size a 0.05 rad tilt is a visible, charming few pixels of motion.
     if (group) group.rotation.y = Math.sin(elapsed * 0.5 + IDLE_PHASE) * 0.08;
     if (headGroup) headGroup.rotation.z = Math.sin(elapsed * 0.4 + IDLE_PHASE * 1.3) * 0.05;
   });
 </script>
 
 <T.Group bind:ref={group}>
-  <T.Mesh geometry={bellSeatedGeometry} material={PONCHO} scale={[0.94, 1, 1.02]} castShadow />
+  <T.Mesh geometry={torsoSeatedGeometry} material={SHIRT} castShadow />
 
-  <T.Mesh geometry={thighR} material={PANTS} />
-  <T.Mesh geometry={thighL} material={PANTS} />
-  <T.Mesh geometry={kneeGeometry} material={PANTS} position={[-0.235, 0.3, 0.098]} />
-  <T.Mesh geometry={kneeGeometry} material={PANTS} position={[-0.235, 0.3, -0.098]} />
-  <T.Mesh geometry={shinR} material={PANTS} />
-  <T.Mesh geometry={shinL} material={PANTS} />
-  <T.Mesh
-    geometry={footGeometry}
-    material={SHOE}
-    position={[-0.32, 0.045, 0.098]}
-    scale={[1.5, 0.62, 1]}
-  />
-  <T.Mesh
-    geometry={footGeometry}
-    material={SHOE}
-    position={[-0.32, 0.045, -0.098]}
-    scale={[1.5, 0.62, 1]}
-  />
+  <T.Mesh geometry={legGeometry} material={PANTS} position={thighR.position} rotation={thighR.rotation} scale={thighR.scale} />
+  <T.Mesh geometry={legGeometry} material={PANTS} position={thighL.position} rotation={thighL.rotation} scale={thighL.scale} />
+  <T.Mesh geometry={legGeometry} material={PANTS} position={shinR.position} rotation={shinR.rotation} scale={shinR.scale} />
+  <T.Mesh geometry={legGeometry} material={PANTS} position={shinL.position} rotation={shinL.rotation} scale={shinL.scale} />
+  <T.Mesh geometry={shoeGeometry} material={SHOE} position={[-0.37, 0.05, 0.1]} rotation={[0, Math.PI / 2, 0]} />
+  <T.Mesh geometry={shoeGeometry} material={SHOE} position={[-0.37, 0.05, -0.1]} rotation={[0, Math.PI / 2, 0]} />
 
-  <T.Mesh geometry={shoulderGeometry} material={PONCHO} position={[0, 0.795, 0.155]} />
-  <T.Mesh geometry={shoulderGeometry} material={PONCHO} position={[0, 0.795, -0.155]} />
-  <T.Mesh geometry={armR} material={SKIN} />
-  <T.Mesh geometry={armL} material={SKIN} />
-  <T.Mesh geometry={handGeometry} material={SKIN} position={[-0.135, 0.585, 0.14]} />
-  <T.Mesh geometry={handGeometry} material={SKIN} position={[-0.135, 0.585, -0.14]} />
+  <T.Mesh geometry={armGeometry} material={SKIN} position={armR.position} rotation={armR.rotation} scale={armR.scale} />
+  <T.Mesh geometry={armGeometry} material={SKIN} position={armL.position} rotation={armL.rotation} scale={armL.scale} />
+  <T.Mesh geometry={handGeometry} material={SKIN} position={[-0.14, 0.4, 0.14]} />
+  <T.Mesh geometry={handGeometry} material={SKIN} position={[-0.14, 0.4, -0.14]} />
 
-  <T.Mesh
-    geometry={scarfRingGeometry}
-    material={SCARF}
-    position={[0, 0.851, 0]}
-    rotation={[Math.PI / 2, 0, 0]}
-  />
-  <T.Mesh geometry={scarfTail} material={SCARF} />
-  <T.Mesh geometry={scarfTailTipGeometry} material={SCARF} position={[0.196, 0.654, 0.158]} />
-
-  <!-- Pivots at the neck so the idle tilt reads as a head tilt, not a lean.
-       rotation.y maps the kit's -Z face inboard; the idle writes rotation.z. -->
+  <!-- Pivots at the neck so the idle reads as a head tilt, not a lean.
+       rotation.y turns the kit's -Z face inboard; the idle writes rotation.z. -->
   <T.Group bind:ref={headGroup} position={[0, NECK_Y_SEATED, 0]} rotation={[0, Math.PI / 2, 0]}>
     <T.Group position={[0, HEAD_Y_SEATED - NECK_Y_SEATED, 0]}>
       <T.Mesh geometry={headGeometry} material={SKIN} castShadow />
-      {#each EYE_POSITIONS as eye (eye.rotY)}
-        <T.Mesh
-          geometry={eyeGeometry}
-          material={EYE}
-          position={eye.pos}
-          rotation={[0, eye.rotY, 0]}
-          scale={EYE_SCALE}
-        />
+      {#each EYE_POSITIONS as pos, i (i)}
+        <T.Mesh geometry={eyeGeometry} material={EYE} position={pos} />
       {/each}
-      {#each GLINT_POSITIONS as pos, i (i)}
-        <T.Mesh geometry={glintGeometry} material={GLINT} position={pos} />
+      {#each BROWS as brow, i (i)}
+        <T.Mesh geometry={browGeometry} material={HAIR} position={brow.pos} rotation={[0, 0, brow.rotZ]} />
       {/each}
-      <T.Mesh geometry={hairBackGeometry} material={HAIR} />
+      <T.Mesh geometry={noseGeometry} material={SKIN} position={NOSE_POSITION} />
+      <T.Mesh geometry={mouthGeometry} material={MOUTH} position={MOUTH_POSITION} />
+
       {#if hat}
-        <T.Mesh geometry={sombreroGeometry} material={STRAW} scale={[0.78, 1, 0.78]} castShadow />
+        <T.Mesh geometry={hairCapGeometry} material={HAIR} />
+        <T.Mesh geometry={sombreroGeometry} material={STRAW} scale={[0.82, 1, 0.82]} castShadow />
         <T.Mesh
           geometry={sombreroBandGeometry}
           material={BAND}
           position={[0, SOMBRERO_BAND_Y, 0]}
           rotation={[-Math.PI / 2, 0, 0]}
-          scale={[0.78, 0.78, 1]}
+          scale={[0.82, 0.82, 1]}
         />
+      {:else if longHair}
+        <T.Mesh geometry={hairCapGeometry} material={HAIR} />
+        <T.Mesh geometry={hairLongGeometry} material={HAIR_OPEN} />
+        {#each HAIR_SIDES as pos, i (i)}
+          <T.Mesh geometry={hairSideGeometry} material={HAIR} position={pos} />
+        {/each}
       {:else}
-        <T.Mesh geometry={hairFringeGeometry} material={HAIR} />
+        <T.Mesh geometry={hairCapGeometry} material={HAIR} />
       {/if}
     </T.Group>
   </T.Group>
