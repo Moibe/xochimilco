@@ -21,6 +21,10 @@ const BANK_SOFTEN_M = 1.5;
 export const canalMask = {
   /** Null until the map has loaded. */
   texture: null as Texture | null,
+  /** The strokes this mask was built from, kept so the minimap can draw the
+   *  very same map the hull is colliding against — rather than fetching its
+   *  own copy and risking the two drifting apart. */
+  strokes: [] as Stroke[],
   /** False when nothing has been drawn — then the world is open water. */
   hasMap: false,
   /** Bumped whenever the mask is rebuilt, so components can react. */
@@ -47,6 +51,7 @@ export function isLand(worldX: number, worldZ: number): boolean {
 
 /** Rebuild the mask from a set of strokes. Safe to call again on every edit. */
 export function buildCanalMask(strokes: Stroke[]) {
+  canalMask.strokes = strokes;
   if (!strokes.length) {
     canalMask.hasMap = false;
     pixels = null;

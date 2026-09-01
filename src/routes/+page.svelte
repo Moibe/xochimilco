@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { Canvas } from '@threlte/core';
   import LakeScene from '$lib/scene/LakeScene.svelte';
+  import Minimapa from '$lib/Minimapa.svelte';
   import { boatInput } from '$lib/scene/boat';
   import { loadCanalMask } from '$lib/scene/canalMask';
   import { autopilot, releaseAutopilot } from '$lib/scene/autopilot';
@@ -87,6 +88,8 @@
   <Canvas>
     <LakeScene />
   </Canvas>
+
+  <Minimapa />
 
   <div class="helm">
     <span><kbd>↑</kbd> impulsar · <kbd>↓</kbd> frenar · <kbd>←</kbd><kbd>→</kbd> timonear</span>
