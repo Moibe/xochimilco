@@ -18,6 +18,9 @@ Thumbs.db
 !.env.example
 !.env.test
 
+# Datos locales (mapa de canales, etc.) — viven junto a la app, no en git
+/data
+
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*

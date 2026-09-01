@@ -149,14 +149,41 @@
   }
 
   function save() {
+    const payload = JSON.stringify({ v: 1, strokes });
+    // localStorage primero: instantáneo y funciona sin red. El servidor es la
+    // copia fuerte (sobrevive a limpiar el navegador y se comparte entre
+    // navegadores); si el PUT falla, el respaldo local ya quedó.
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({ v: 1, strokes }));
+      localStorage.setItem(STORE_KEY, payload);
     } catch {
-      // Sin almacenamiento (modo privado, etc.): la sesión sigue, solo no persiste.
+      // Sin almacenamiento (modo privado, etc.): el servidor sigue guardando.
     }
+    fetch('/api/canales', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: payload,
+    }).catch(() => {
+      // Sin servidor (offline): localStorage ya tiene el dibujo.
+    });
   }
 
-  function load() {
+  async function load() {
+    // El servidor es la fuente autoritativa. Si viene VACÍO, se cae a
+    // localStorage a propósito: así el dibujo hecho antes de que existiera el
+    // endpoint migra solo — se carga del respaldo local y el siguiente
+    // guardado lo sube.
+    try {
+      const res = await fetch('/api/canales');
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.v === 1 && Array.isArray(data.strokes) && data.strokes.length > 0) {
+          strokes = data.strokes;
+          return;
+        }
+      }
+    } catch {
+      // Sin red: probamos el respaldo local.
+    }
     try {
       const raw = localStorage.getItem(STORE_KEY);
       if (!raw) return;
@@ -238,13 +265,17 @@
     wctx = world.getContext('2d')!;
     vctx = viewEl.getContext('2d')!;
 
-    load();
-    strokeCount = strokes.length;
+    // Lienzo en blanco de inmediato; el dibujo guardado llega en cuanto
+    // responde el servidor (o el respaldo local) y se repinta.
     redrawWorld();
-
     const ro = new ResizeObserver(layout);
     ro.observe(hostEl);
     layout();
+    load().then(() => {
+      strokeCount = strokes.length;
+      redrawWorld();
+      drawView();
+    });
     return () => ro.disconnect();
   });
 </script>
