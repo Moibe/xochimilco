@@ -67,11 +67,17 @@
       ctx.beginPath();
       ctx.moveTo(trail[0][0], trail[0][1]);
       for (const [tx, ty] of trail.slice(1)) ctx.lineTo(tx, ty);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.lineWidth = 1.4;
-      ctx.lineCap = 'round';
+      // Punteada y tenue a propósito: la estela y el rumbo son lo ÚNICO blanco
+      // aquí, y navegando en recta quedan alineados, uno detrás y otro delante
+      // del punto. Con el mismo trazo continuo se leían como una sola línea
+      // atravesando la trajinera, imposible de interpretar.
+      ctx.setLineDash([2.5, 2.5]);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.38)';
+      ctx.lineWidth = 1.2;
+      ctx.lineCap = 'butt';
       ctx.lineJoin = 'round';
       ctx.stroke();
+      ctx.setLineDash([]);
     }
 
     // Fuera del mapa dibujado no hay dónde ponerla: mejor no mentir con un
@@ -82,13 +88,24 @@
       // como dirección en pantalla. Antes lo pasaba por la escala del mapa y la
       // espiga salía de 2.6 px, invisible.
       const fwd = boatForward();
-      const TICK_PX = 10;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
-      ctx.lineWidth = 1.6;
-      ctx.lineCap = 'round';
+      // Punta de flecha, no una línea: una línea saliendo de la proa es
+      // indistinguible de la estela entrando por la popa cuando va derecho.
+      // Un triángulo se lee como "apunta hacia allá" y nunca como "pasó por
+      // aquí", sin importar cómo caiga respecto a la estela.
+      const perpX = -fwd.z;
+      const perpZ = fwd.x;
+      const NOSE = 9.5; // punta, medida desde el centro del punto
+      const BASE = 3.6; // qué tan atrás arranca
+      const HALF = 3.2; // media anchura
       ctx.beginPath();
-      ctx.moveTo(px, py);
-      ctx.lineTo(px + fwd.x * TICK_PX, py + fwd.z * TICK_PX);
+      ctx.moveTo(px + fwd.x * NOSE, py + fwd.z * NOSE);
+      ctx.lineTo(px + fwd.x * BASE + perpX * HALF, py + fwd.z * BASE + perpZ * HALF);
+      ctx.lineTo(px + fwd.x * BASE - perpX * HALF, py + fwd.z * BASE - perpZ * HALF);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(20, 30, 25, 0.85)';
       ctx.stroke();
 
       ctx.beginPath();
