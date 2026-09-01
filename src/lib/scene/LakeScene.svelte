@@ -7,6 +7,7 @@
   import Lake from './Lake.svelte';
   import Lirios from './Lirios.svelte';
   import Ripples from './Ripples.svelte';
+  import Terreno from './Terreno.svelte';
   import Trajinera from './Trajinera.svelte';
   import { advanceStroke } from './stroke';
   import { advanceBoat, boat } from './boat';
@@ -28,6 +29,9 @@
   let controls = $state.raw<OrbitControlsImpl | undefined>();
   let lastX = boat.x;
   let lastZ = boat.z;
+  /** Where the camera sits relative to the boat before anyone orbits it. */
+  const CAM_OFFSET = { x: 9, y: 5, z: 10 };
+  let framed = false;
 
   // The scene root owns both clocks, and is the ONLY caller that advances
   // them — the poler, the hull, the ripples and the hyacinth all just read.
@@ -38,9 +42,23 @@
     advanceStroke(delta);
     advanceBoat(delta);
 
-    // Follow her by the DELTA rather than snapping the camera to a fixed
-    // offset: that keeps whatever angle and zoom the viewer orbited to, and
-    // it keeps OrbitControls' own spherical state consistent (it works off
+    // Frame her once, on the first frame the refs exist. The camera's declared
+    // position is relative to nothing — and she may be anywhere, because the
+    // map lets you drop her hundreds of metres away while this scene isn't
+    // even mounted. Without this the view opens on empty water with the boat
+    // somewhere out in the fog.
+    if (camera && controls && !framed) {
+      framed = true;
+      camera.position.set(boat.x + CAM_OFFSET.x, CAM_OFFSET.y, boat.z + CAM_OFFSET.z);
+      controls.target.set(boat.x, 0.6, boat.z);
+      lastX = boat.x;
+      lastZ = boat.z;
+      return;
+    }
+
+    // Then follow her by the DELTA rather than snapping to a fixed offset:
+    // that keeps whatever angle and zoom the viewer orbited to, and it keeps
+    // OrbitControls' own spherical state consistent (it works off
     // camera.position and target, so both have to move together).
     const dx = boat.x - lastX;
     const dz = boat.z - lastZ;
@@ -83,6 +101,7 @@
 <T.HemisphereLight args={['#dff2ff', '#1e4436', 1.15]} />
 <T.AmbientLight intensity={0.35} />
 
+<Terreno sun={SUN} />
 <Lake sun={SUN} />
 <Lirios />
 <Ripples />

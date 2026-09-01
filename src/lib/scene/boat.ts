@@ -1,3 +1,4 @@
+import { isLand } from './canalMask';
 import { stroke } from './stroke';
 
 /**
@@ -111,6 +112,39 @@ export function advanceBoat(delta: number) {
   boat.heading += boatInput.turn * TURN_RATE * steerAuthority * delta;
 
   const fwd = boatForward();
-  boat.x += fwd.x * boat.speed * delta;
-  boat.z += fwd.z * boat.speed * delta;
+  const stepX = fwd.x * boat.speed * delta;
+  const stepZ = fwd.z * boat.speed * delta;
+
+  // Try the whole move; if the bank is in the way, try each axis on its own so
+  // she SLIDES along the shore instead of sticking to it. Sticking is what a
+  // naive "blocked? then don't move" check gives you, and it makes a narrow
+  // canal nearly impossible to steer down.
+  if (canGo(boat.x + stepX, boat.z + stepZ)) {
+    boat.x += stepX;
+    boat.z += stepZ;
+  } else if (canGo(boat.x + stepX, boat.z)) {
+    boat.x += stepX;
+    boat.speed *= 0.6; // grounding scrubs off way
+  } else if (canGo(boat.x, boat.z + stepZ)) {
+    boat.z += stepZ;
+    boat.speed *= 0.6;
+  } else {
+    boat.speed = 0;
+  }
 }
+
+/**
+ * Can the hull sit here? Checked at the leading end rather than the centre —
+ * an 8 m boat tested only at her middle buries half her length in a bank
+ * before anything stops her. Which end leads depends on whether she is going
+ * ahead or backing up.
+ */
+function canGo(x: number, z: number): boolean {
+  if (isLand(x, z)) return false;
+  const fwd = boatForward();
+  const lead = boat.speed >= 0 ? HALF_LENGTH : -HALF_LENGTH;
+  return !isLand(x + fwd.x * lead, z + fwd.z * lead);
+}
+
+/** Half the hull's length, the probe distance to her bow (or stern astern). */
+const HALF_LENGTH = 3.4;

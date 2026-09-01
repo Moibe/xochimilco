@@ -93,4 +93,15 @@
   });
 </script>
 
-<T.InstancedMesh bind:ref={mesh} args={[geometry, material, count]} renderOrder={2} />
+<!-- frustumCulled=false is load-bearing, not a micro-optimisation. three computes
+     an InstancedMesh's bounding sphere ONCE, lazily, and never invalidates it on
+     setMatrixAt. These streaks are re-anchored around the moving boat while the
+     mesh's own matrixWorld stays at the origin, so the stale sphere would sit
+     back there and cull every streak the moment she sailed ~50 m away. They are
+     always right around the camera anyway, so there is nothing to cull. -->
+<T.InstancedMesh
+  bind:ref={mesh}
+  args={[geometry, material, count]}
+  frustumCulled={false}
+  renderOrder={2}
+/>

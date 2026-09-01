@@ -1,45 +1,49 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import {
+    CANAL_WIDTH,
+    LAND,
+    MAP_H,
+    MAP_W,
+    METRES_PER_UNIT,
+    mapToWorld,
+    paintLatest,
+    paintStrokes,
+    worldToMap,
+    type Mode,
+    type Stroke,
+  } from '$lib/canales';
+  import { boat, boatForward } from '$lib/scene/boat';
 
   /**
-   * El mapa de los canales: una herramienta de dibujo sencilla. Un solo pincel
-   * del ancho de un canal que se arrastra sobre la "tierra" para abrir agua, y
-   * un modo Tierra que la repone (la goma ES pintar tierra encima — no hay
-   * canal alpha ni composite raro).
+   * El mapa de los canales, y el timón de la trajinera.
    *
-   * El dibujo vive como VECTORES (lista de trazos con sus puntos), no como
-   * pixeles: el canvas es solo la vista. De ahí salen gratis el deshacer
-   * (pop del último trazo + repintado) y la persistencia (JSON chico en
-   * localStorage, no un dataURL gordo). Todo ocurre sobre un lienzo-mundo de
-   * tamaño fijo, así que el ancho del canal es constante sin importar el
-   * tamaño de la ventana, y un resize solo re-encuadra.
+   * Dibujas con un pincel del ancho de un canal; el modo Tierra la repone (la
+   * goma ES pintar tierra encima). El punto blanco es la trajinera: muestra
+   * dónde está en el mundo 3D, y con la herramienta Trajinera la mueves a
+   * donde quieras. Lo que dibujes aquí es literalmente el terreno de la vista
+   * 3D — las mismas medidas y los mismos trazos, vía `$lib/canales`.
    *
-   * Por ahora es independiente del mundo 3D; el formato de trazos queda listo
-   * para algún día extruir estos canales en la escena.
+   * Los trazos viven como VECTORES, no como pixeles: el canvas es solo la
+   * vista. De ahí salen gratis el deshacer y una persistencia de unos KB.
    */
 
-  const WORLD_W = 1600;
-  const WORLD_H = 1000;
-  /** Ancho del pincel = ancho de un canal, en unidades del mundo. */
-  const CANAL_WIDTH = 26;
-  /** Mismo tono que el agua de la escena 3D, para que se sientan un mundo. */
-  const WATER = '#3e7d6c';
-  const LAND = '#66854f';
   const STORE_KEY = 'xochimilco:canales:v1';
   /** Distancia mínima entre puntos guardados — evita trazos de mil puntos. */
   const MIN_SEGMENT = 2.5;
 
-  type Mode = 'canal' | 'tierra';
-  type Stroke = { mode: Mode; points: number[] }; // plano [x0,y0,x1,y1,...]
+  type Tool = Mode | 'trajinera';
 
-  let mode = $state<Mode>('canal');
+  let tool = $state<Tool>('canal');
   let strokeCount = $state(0);
   let confirmClear = $state(false);
+  /** Posición de la lancha en unidades de mapa, para dibujar el punto. */
+  let boatMap = $state(worldToMap(boat.x, boat.z));
 
   let hostEl: HTMLDivElement;
   let viewEl: HTMLCanvasElement;
 
-  // Estado imperativo del dibujo — nada de esto necesita reactividad de Svelte.
+  // Estado imperativo del dibujo — nada de esto necesita reactividad.
   let strokes: Stroke[] = [];
   let world!: HTMLCanvasElement;
   let wctx!: CanvasRenderingContext2D;
@@ -47,37 +51,11 @@
   let scale = 1;
   let ox = 0;
   let oy = 0;
-  let cursor: { x: number; y: number } | null = null; // en px CSS de la vista
+  let cursor: { x: number; y: number } | null = null; // px CSS de la vista
   let drawing = false;
 
-  function strokeStyleFor(m: Mode) {
-    return m === 'canal' ? WATER : LAND;
-  }
-
-  /** Pinta un tramo (o un punto suelto) de un trazo sobre el lienzo-mundo. */
-  function paintSegment(m: Mode, x0: number, y0: number, x1: number, y1: number) {
-    wctx.strokeStyle = strokeStyleFor(m);
-    wctx.lineWidth = CANAL_WIDTH;
-    wctx.lineCap = 'round';
-    wctx.lineJoin = 'round';
-    wctx.beginPath();
-    wctx.moveTo(x0, y0);
-    // Un "punto" también pasa por aquí: el cap redondo estampa el círculo.
-    wctx.lineTo(x1 === x0 && y1 === y0 ? x1 + 0.01 : x1, y1);
-    wctx.stroke();
-  }
-
   function redrawWorld() {
-    wctx.fillStyle = LAND;
-    wctx.fillRect(0, 0, WORLD_W, WORLD_H);
-    for (const s of strokes) {
-      for (let i = 0; i + 3 < s.points.length; i += 2) {
-        paintSegment(s.mode, s.points[i], s.points[i + 1], s.points[i + 2], s.points[i + 3]);
-      }
-      if (s.points.length === 2) {
-        paintSegment(s.mode, s.points[0], s.points[1], s.points[0], s.points[1]);
-      }
-    }
+    paintStrokes(wctx, strokes);
   }
 
   function drawView() {
@@ -85,8 +63,8 @@
     const h = viewEl.clientHeight;
     vctx.clearRect(0, 0, w, h);
 
-    const mw = WORLD_W * scale;
-    const mh = WORLD_H * scale;
+    const mw = MAP_W * scale;
+    const mh = MAP_H * scale;
     vctx.save();
     vctx.beginPath();
     vctx.roundRect(ox, oy, mw, mh, 14);
@@ -100,14 +78,16 @@
     vctx.roundRect(ox, oy, mw, mh, 14);
     vctx.stroke();
 
+    drawBoat();
+
     // Anillo del pincel: se ve el ancho del canal ANTES de soltarlo.
-    if (cursor) {
+    if (cursor && tool !== 'trajinera') {
       const r = (CANAL_WIDTH / 2) * scale;
       vctx.beginPath();
       vctx.arc(cursor.x, cursor.y, r, 0, Math.PI * 2);
       vctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
       vctx.lineWidth = 1.6;
-      if (mode === 'tierra') vctx.setLineDash([5, 4]);
+      if (tool === 'tierra') vctx.setLineDash([5, 4]);
       vctx.stroke();
       vctx.setLineDash([]);
       vctx.beginPath();
@@ -116,6 +96,32 @@
       vctx.lineWidth = 1;
       vctx.stroke();
     }
+  }
+
+  /** La trajinera: punto blanco con una espiga que apunta a su proa. */
+  function drawBoat() {
+    const px = ox + boatMap.x * scale;
+    const py = oy + boatMap.y * scale;
+
+    // La proa: el rumbo 0 mira a -Z, que en el mapa es hacia arriba.
+    const fwd = boatForward();
+    const len = 13 * scale;
+    vctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    vctx.lineWidth = 2;
+    vctx.lineCap = 'round';
+    vctx.beginPath();
+    vctx.moveTo(px, py);
+    vctx.lineTo(px + (fwd.x / METRES_PER_UNIT) * len, py + (fwd.z / METRES_PER_UNIT) * len);
+    vctx.stroke();
+
+    vctx.beginPath();
+    vctx.arc(px, py, 5.5, 0, Math.PI * 2);
+    vctx.fillStyle = '#ffffff';
+    vctx.fill();
+    // Aro oscuro: sobre agua clara el punto blanco solo se perdería.
+    vctx.lineWidth = 1.6;
+    vctx.strokeStyle = 'rgba(20, 30, 25, 0.85)';
+    vctx.stroke();
   }
 
   function layout() {
@@ -128,24 +134,35 @@
     // Encuadre contain, centrado, con un respiro para la toolbar.
     const PAD = 14;
     const TOP = 64;
-    scale = Math.min((w - PAD * 2) / WORLD_W, (h - TOP - PAD) / WORLD_H);
-    ox = (w - WORLD_W * scale) / 2;
-    oy = TOP + (h - TOP - PAD - WORLD_H * scale) / 2;
+    scale = Math.min((w - PAD * 2) / MAP_W, (h - TOP - PAD) / MAP_H);
+    ox = (w - MAP_W * scale) / 2;
+    oy = TOP + (h - TOP - PAD - MAP_H * scale) / 2;
     drawView();
   }
 
-  function toWorld(e: PointerEvent) {
+  function toMap(e: PointerEvent) {
     const r = viewEl.getBoundingClientRect();
     const cx = e.clientX - r.left;
     const cy = e.clientY - r.top;
     return {
       cx,
       cy,
-      wx: Math.min(WORLD_W, Math.max(0, (cx - ox) / scale)),
-      wy: Math.min(WORLD_H, Math.max(0, (cy - oy) / scale)),
-      inside:
-        cx >= ox && cx <= ox + WORLD_W * scale && cy >= oy && cy <= oy + WORLD_H * scale,
+      mx: Math.min(MAP_W, Math.max(0, (cx - ox) / scale)),
+      my: Math.min(MAP_H, Math.max(0, (cy - oy) / scale)),
+      inside: cx >= ox && cx <= ox + MAP_W * scale && cy >= oy && cy <= oy + MAP_H * scale,
     };
+  }
+
+  /** Mueve la trajinera del mundo 3D a este punto del mapa. */
+  function placeBoat(mx: number, my: number) {
+    const w = mapToWorld(mx, my);
+    boat.x = w.x;
+    boat.z = w.z;
+    // Sin esto llegaría al lugar nuevo todavía navegando a la velocidad que
+    // llevaba, y se saldría sola del canal donde la acabas de poner.
+    boat.speed = 0;
+    boatMap = { x: mx, y: my };
+    drawView();
   }
 
   function save() {
@@ -195,28 +212,41 @@
   }
 
   function onPointerDown(e: PointerEvent) {
-    const p = toWorld(e);
+    const p = toMap(e);
     if (!p.inside || e.button !== 0) return;
-    drawing = true;
     viewEl.setPointerCapture(e.pointerId);
-    strokes.push({ mode, points: [p.wx, p.wy] });
-    paintSegment(mode, p.wx, p.wy, p.wx, p.wy);
-    strokeCount = strokes.length;
     cursor = { x: p.cx, y: p.cy };
+
+    if (tool === 'trajinera') {
+      drawing = true; // arrastrar la reubica de forma continua
+      placeBoat(p.mx, p.my);
+      return;
+    }
+
+    drawing = true;
+    strokes.push({ mode: tool, points: [p.mx, p.my] });
+    paintLatest(wctx, tool, p.mx, p.my, p.mx, p.my);
+    strokeCount = strokes.length;
     drawView();
   }
 
   function onPointerMove(e: PointerEvent) {
-    const p = toWorld(e);
+    const p = toMap(e);
     cursor = p.inside || drawing ? { x: p.cx, y: p.cy } : null;
+
+    if (drawing && tool === 'trajinera') {
+      placeBoat(p.mx, p.my);
+      return;
+    }
+
     if (drawing) {
       const s = strokes[strokes.length - 1];
       const n = s.points.length;
       const lx = s.points[n - 2];
       const ly = s.points[n - 1];
-      if (Math.hypot(p.wx - lx, p.wy - ly) >= MIN_SEGMENT) {
-        s.points.push(p.wx, p.wy);
-        paintSegment(s.mode, lx, ly, p.wx, p.wy);
+      if (Math.hypot(p.mx - lx, p.my - ly) >= MIN_SEGMENT) {
+        s.points.push(p.mx, p.my);
+        paintLatest(wctx, s.mode, lx, ly, p.mx, p.my);
       }
     }
     drawView();
@@ -224,8 +254,9 @@
 
   function onPointerUp() {
     if (!drawing) return;
+    const wasDrawingStrokes = tool !== 'trajinera';
     drawing = false;
-    save();
+    if (wasDrawingStrokes) save();
   }
 
   function onPointerLeave() {
@@ -260,10 +291,13 @@
 
   onMount(() => {
     world = document.createElement('canvas');
-    world.width = WORLD_W;
-    world.height = WORLD_H;
+    world.width = MAP_W;
+    world.height = MAP_H;
     wctx = world.getContext('2d')!;
     vctx = viewEl.getContext('2d')!;
+
+    // La lancha pudo haber navegado desde la última visita.
+    boatMap = worldToMap(boat.x, boat.z);
 
     // Lienzo en blanco de inmediato; el dibujo guardado llega en cuanto
     // responde el servidor (o el respaldo local) y se repinta.
@@ -293,13 +327,22 @@
   ></canvas>
 
   <div class="toolbar">
-    <span class="hint">Mapa de canales — arrastra para dibujar</span>
-    <div class="group" role="radiogroup" aria-label="Modo de pincel">
-      <button class="ctl" class:is-active={mode === 'canal'} onclick={() => (mode = 'canal')}>
+    <span class="hint">
+      {tool === 'trajinera' ? 'Arrastra el punto para mover la trajinera' : 'Arrastra para dibujar'}
+    </span>
+    <div class="group" role="radiogroup" aria-label="Herramienta">
+      <button class="ctl" class:is-active={tool === 'canal'} onclick={() => (tool = 'canal')}>
         Canal
       </button>
-      <button class="ctl" class:is-active={mode === 'tierra'} onclick={() => (mode = 'tierra')}>
+      <button class="ctl" class:is-active={tool === 'tierra'} onclick={() => (tool = 'tierra')}>
         Tierra
+      </button>
+      <button
+        class="ctl"
+        class:is-active={tool === 'trajinera'}
+        onclick={() => (tool = 'trajinera')}
+      >
+        Trajinera
       </button>
     </div>
     <div class="group">

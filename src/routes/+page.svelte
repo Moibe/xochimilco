@@ -1,8 +1,13 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { Canvas } from '@threlte/core';
   import LakeScene from '$lib/scene/LakeScene.svelte';
   import { boatInput } from '$lib/scene/boat';
+  import { loadCanalMask } from '$lib/scene/canalMask';
+
+  // Pick up whatever is currently drawn on the map, every time we come back to
+  // the lake — you can go and re-cut a canal and sail it on your return.
+  onMount(loadCanalMask);
 
   /**
    * Keyboard helm. Tracks which arrows are HELD rather than reacting to

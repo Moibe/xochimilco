@@ -111,10 +111,16 @@
         scatter(clump, boat.x + Math.cos(a) * REACH, boat.z + Math.sin(a) * REACH);
       } else {
         // Under the hull: shove the mat out to the side she is passing on.
+        // EASED, not snapped — jumping it straight to the clear line teleported
+        // a whole clump 1.4 m sideways in one frame while it was still ahead of
+        // the bow, which reads as the mat flinching away before she touches it.
+        // Lerping parts it over a few frames, so she looks like she is pushing.
         const local = worldToBoat(clump.x, clump.z);
         if (Math.abs(local.x) < CLEAR_HALF_BEAM && Math.abs(local.z) < CLEAR_HALF_LEN) {
           const side = local.x >= 0 ? 1 : -1;
-          const pushed = boatToWorld(side * CLEAR_HALF_BEAM, local.z);
+          const targetX = side * CLEAR_HALF_BEAM;
+          const eased = local.x + (targetX - local.x) * Math.min(1, delta * 5);
+          const pushed = boatToWorld(eased, local.z);
           scatter(clump, pushed.x, pushed.z);
         }
       }
@@ -148,5 +154,17 @@
   });
 </script>
 
-<T.InstancedMesh bind:ref={padMesh} args={[padGeometry, padMaterial, padTotal]} />
-<T.InstancedMesh bind:ref={flowerMesh} args={[flowerGeometry, flowerMaterial, bloomTotal]} />
+<!-- frustumCulled=false is load-bearing here (same reason as Ripples): three
+     computes an InstancedMesh's bounding sphere once and never invalidates it
+     when instances move, so the stale sphere left at the world origin would
+     cull every pad and bloom once she had sailed ~85 m from it. -->
+<T.InstancedMesh
+  bind:ref={padMesh}
+  args={[padGeometry, padMaterial, padTotal]}
+  frustumCulled={false}
+/>
+<T.InstancedMesh
+  bind:ref={flowerMesh}
+  args={[flowerGeometry, flowerMaterial, bloomTotal]}
+  frustumCulled={false}
+/>
