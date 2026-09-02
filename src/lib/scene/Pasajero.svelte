@@ -23,6 +23,7 @@
     hairLongGeometry,
     hairCapGeometry,
     hairTempleGeometry,
+    hairNapeGeometry,
     hairSideGeometry,
     handGeometry,
     headGeometry,
@@ -185,6 +186,7 @@
         {#each HAIR_TEMPLES as pos, i (i)}
           <T.Mesh geometry={hairTempleGeometry} material={HAIR} position={pos} />
         {/each}
+        <T.Mesh geometry={hairNapeGeometry} material={HAIR_OPEN} />
         <T.Mesh geometry={sombreroGeometry} material={STRAW} castShadow />
         <T.Mesh
           geometry={sombreroBandGeometry}
@@ -206,6 +208,7 @@
         {#each HAIR_TEMPLES as pos, i (i)}
           <T.Mesh geometry={hairTempleGeometry} material={HAIR} position={pos} />
         {/each}
+        <T.Mesh geometry={hairNapeGeometry} material={HAIR_OPEN} />
       {/if}
     </T.Group>
   </T.Group>

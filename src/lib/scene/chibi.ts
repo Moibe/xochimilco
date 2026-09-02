@@ -211,6 +211,28 @@ export const HAIR_TEMPLES: [number, number, number][] = [
   [-0.232, 0.055, -0.145],
 ];
 /**
+ * Short hair still needs to cover the sides and the nape, not just the front
+ * temples — `hairCapGeometry` is a uniform-latitude cutoff, so its 1.14 rad
+ * edge sits just as high round the BACK of the head as it does up front,
+ * leaving the whole nape bare. This wraps everything except the face: same
+ * phi gap as `hairLongGeometry` below (see its comment for the phi
+ * convention), just a shallower theta so it reads as a short haircut ending
+ * around the ear/nape rather than long hair down the back.
+ *
+ * Needs DoubleSide — the phi gap leaves two raw edges, same as the long-hair
+ * shell.
+ */
+export const hairNapeGeometry = superellipsoid(
+  { x: HEAD_HALF.x + 0.016, y: HEAD_HALF.y + 0.014, z: HEAD_HALF.z + 0.016 },
+  4.2,
+  32,
+  22,
+  0,
+  1.7,
+  Math.PI * 0.5 - Math.PI * 0.62,
+  Math.PI * 1.24
+);
+/**
  * Length down the back and sides for long hair, with a gap left for the face.
  *
  * Getting the gap in the right place needs three's actual phi convention, not

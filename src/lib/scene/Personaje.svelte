@@ -27,6 +27,7 @@
     lashGeometry,
     hairCapGeometry,
     hairTempleGeometry,
+    hairNapeGeometry,
     hairLongGeometry,
     hairSideGeometry,
     handGeometry,
@@ -183,6 +184,8 @@
       {#each HAIR_SIDES as pos, i (i)}
         <T.Mesh geometry={hairSideGeometry} material={HAIR} position={pos} />
       {/each}
+    {:else}
+      <T.Mesh geometry={hairNapeGeometry} material={HAIR_OPEN} />
     {/if}
     {#if hat}
       <T.Mesh geometry={sombreroGeometry} material={STRAW} />
