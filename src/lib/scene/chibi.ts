@@ -116,7 +116,7 @@ export const EAR_POSITIONS: [number, number, number][] = [
  * outward tilt and the lashes below are what give the eye its shape; the
  * silhouette itself stays simple.
  */
-export const eyeGeometry = superellipsoid({ x: 0.052, y: 0.058, z: 0.024 }, 2.6, 20, 16);
+export const eyeGeometry = superellipsoid({ x: 0.047, y: 0.052, z: 0.022 }, 2.6, 20, 16);
 export const EYES: { pos: [number, number, number]; rotZ: number }[] = [
   { pos: [0.098, -0.035, -0.233], rotZ: 0.09 },
   { pos: [-0.098, -0.035, -0.233], rotZ: -0.09 },
@@ -149,8 +149,8 @@ export const browGeometry = superellipsoid({ x: 0.055, y: 0.015, z: 0.019 }, 3.0
 export const BROWS: { pos: [number, number, number]; rotZ: number }[] = [
   // Sits clear of the eye tops. Closer and the brow merges into the eye as one
   // dark band; the reference faces keep a visible gap between them.
-  { pos: [0.098, 0.098, -0.237], rotZ: -0.1 },
-  { pos: [-0.098, 0.098, -0.237], rotZ: 0.1 },
+  { pos: [0.098, 0.085, -0.237], rotZ: -0.1 },
+  { pos: [-0.098, 0.085, -0.237], rotZ: 0.1 },
 ];
 
 /** The button nose — small, central, and the thing that says "vinyl toy". */
