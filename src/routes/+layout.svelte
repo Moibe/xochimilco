@@ -32,9 +32,9 @@
   }
   :global(body) {
     min-height: 100vh;
-    /* Naranja sólido. Es el mismo tono que ya cerraba el gradiente, así que
-       las barras glass y sus bordes siguen contrastando igual que antes. */
-    background: #c2410c;
+    /* Naranja sólido, un tono más claro que el original (#c2410c → #ea580c,
+       de "orange-700" a "orange-600" en la escala Tailwind). */
+    background: #ea580c;
     background-attachment: fixed;
     color: rgba(255, 255, 255, 0.95);
     font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
