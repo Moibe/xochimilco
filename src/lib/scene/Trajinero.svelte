@@ -2,7 +2,6 @@
   import { T, useTask } from '@threlte/core';
   import {
     CylinderGeometry,
-    DoubleSide,
     Euler,
     Group,
     MeshStandardMaterial,
@@ -14,7 +13,6 @@
     BROWS,
     EAR_POSITIONS,
     EYES,
-    HAIR_TEMPLES,
     LASHES,
     HEAD_Y_STANDING,
     HIP_CENTRE_Y,
@@ -35,9 +33,7 @@
     lashGeometry,
     handGeometry,
     hipGeometry,
-    hairCapGeometry,
-    hairTempleGeometry,
-    hairNapeGeometry,
+    hairShortGeometry,
     headGeometry,
     legGeometry,
     mouthGeometry,
@@ -81,8 +77,6 @@
   const SHIRT = new MeshStandardMaterial({ color: '#f6f1e6', roughness: 0.9 });
   const SKIN = new MeshStandardMaterial({ color: '#d09a6e', roughness: 0.78 });
   const HAIR = new MeshStandardMaterial({ color: '#2b1d14', roughness: 0.95 });
-  /** The nape/sides shell has an open phi sweep, same as the passengers' long hair. */
-  const HAIR_OPEN = new MeshStandardMaterial({ color: '#2b1d14', roughness: 0.95, side: DoubleSide });
   /**
    * Solid black, and slightly glossy on purpose: the reference figures have no
    * painted white dot in the eye — the highlight you see is the varnish
@@ -241,11 +235,7 @@
         <T.Mesh geometry={noseGeometry} material={SKIN} position={NOSE_POSITION} />
         <T.Mesh geometry={mouthGeometry} material={MOUTH} position={MOUTH_POSITION} />
         <!-- Sombrero over cropped hair. -->
-        <T.Mesh geometry={hairCapGeometry} material={HAIR} />
-        {#each HAIR_TEMPLES as pos, i (i)}
-          <T.Mesh geometry={hairTempleGeometry} material={HAIR} position={pos} />
-        {/each}
-        <T.Mesh geometry={hairNapeGeometry} material={HAIR_OPEN} />
+        <T.Mesh geometry={hairShortGeometry} material={HAIR} />
         <T.Mesh geometry={sombreroGeometry} material={STRAW} castShadow />
         <T.Mesh
           geometry={sombreroBandGeometry}

@@ -2,6 +2,7 @@ import {
   BufferGeometry,
   CapsuleGeometry,
   CylinderGeometry,
+  Float32BufferAttribute,
   LatheGeometry,
   SphereGeometry,
   TorusGeometry,
@@ -177,84 +178,94 @@ export const MOUTH_POSITION: [number, number, number] = [0, -0.138, -0.238];
 
 // ---- hair ------------------------------------------------------------------
 /**
- * A shell over the crown, cut at a fixed latitude — safe from the face
- * because it stops well above every feature, but for exactly that reason it
- * reads as a helmet sitting ON the head rather than hair growing FROM it: a
- * real hairline comes down the temples toward the ear, and a uniform cutoff
- * can't do that on its own (see `hairTempleGeometry` below, which does).
+ * One continuous hair shell, not a crown cap plus separate sideburn lumps
+ * plus a separate phi-gapped nape shell stitched around it — that three-piece
+ * version showed real seams (a visible join, and a sliver of bare skin
+ * peeking through where the pieces didn't quite meet). Depth — how far down
+ * from the crown the surface reaches — instead varies smoothly with phi:
+ * shallow across the front, so it stays a flat fringe above the brows, then
+ * eases deeper through the temples to a uniform depth all round the sides and
+ * back. Phi sweeps the full 2π with no gap, so the mesh is a single closed
+ * dome: one body, no seam, no open edge needing DoubleSide.
+ *
+ * SphereGeometry's own convention — x = -cos(phi)·sin(theta), z = sin(phi)·
+ * sin(theta) — puts phi = 0 at -X and the face at phi = 3π/2 (see the old
+ * long-hair phi gap this replaced, kept here as FRONT_PHI below).
+ *
+ * `thetaSide` is the only difference between the short and long builds below.
  */
-export const hairCapGeometry = superellipsoid(
-  { x: HEAD_HALF.x + 0.014, y: HEAD_HALF.y + 0.012, z: HEAD_HALF.z + 0.014 },
-  4.2,
-  32,
-  20,
-  0,
-  1.14
-);
+function hairShellGeometry(
+  half: { x: number; y: number; z: number },
+  exponent: number,
+  widthSegments: number,
+  heightSegments: number,
+  thetaFront: number,
+  thetaSide: number
+): BufferGeometry {
+  const FRONT_PHI = (Math.PI * 3) / 2;
+  // Flat above both eyes (they sit ~0.4 rad off-centre) before easing to full
+  // depth by about 1.2 rad out — the same silhouette the old temple lumps and
+  // nape shell were tuned to, now one continuous surface instead of three.
+  const FRONT_HALF_ANGLE = 0.55;
+  const TRANSITION = 0.65;
+
+  const thetaMaxAt = (phi: number) => {
+    let d = Math.abs(phi - FRONT_PHI);
+    if (d > Math.PI) d = Math.PI * 2 - d;
+    if (d <= FRONT_HALF_ANGLE) return thetaFront;
+    if (d >= FRONT_HALF_ANGLE + TRANSITION) return thetaSide;
+    const t = (d - FRONT_HALF_ANGLE) / TRANSITION;
+    const eased = t * t * (3 - 2 * t);
+    return thetaFront + (thetaSide - thetaFront) * eased;
+  };
+
+  const rowSize = widthSegments + 1;
+  const positions: number[] = [];
+  for (let iy = 0; iy <= heightSegments; iy++) {
+    const v = iy / heightSegments;
+    for (let ix = 0; ix <= widthSegments; ix++) {
+      const phi = (ix / widthSegments) * Math.PI * 2;
+      const theta = v * thetaMaxAt(phi);
+      // Already unit-length by construction (spherical coords, radius 1).
+      const x = -Math.cos(phi) * Math.sin(theta);
+      const y = Math.cos(theta);
+      const z = Math.sin(phi) * Math.sin(theta);
+      const denom = Math.abs(x) ** exponent + Math.abs(y) ** exponent + Math.abs(z) ** exponent;
+      const r = 1 / denom ** (1 / exponent);
+      positions.push(x * r * half.x, y * r * half.y, z * r * half.z);
+    }
+  }
+
+  // Mirrors SphereGeometry's own winding so normals land outward — iy === 0
+  // is the crown point, where the (a, b, d) triangle degenerates to zero
+  // area and is skipped exactly as upstream does; thetaEnd never reaches π
+  // here, so (unlike upstream) the last row's (b, c, d) is never skipped.
+  const indices: number[] = [];
+  for (let iy = 0; iy < heightSegments; iy++) {
+    for (let ix = 0; ix < widthSegments; ix++) {
+      const a = iy * rowSize + ix + 1;
+      const b = iy * rowSize + ix;
+      const c = (iy + 1) * rowSize + ix;
+      const d = (iy + 1) * rowSize + ix + 1;
+      if (iy !== 0) indices.push(a, b, d);
+      indices.push(b, c, d);
+    }
+  }
+
+  const geo = new BufferGeometry();
+  geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+const HAIR_HALF = { x: HEAD_HALF.x + 0.016, y: HEAD_HALF.y + 0.014, z: HEAD_HALF.z + 0.016 };
 /**
- * The sideburn/temple: bridges the cap's edge down toward the ear, which the
- * cap's own uniform-latitude cutoff can never do (revolving a single theta
- * value gives the same height all the way round, front, back AND sides).
- *
- * Measured against a real render, not placed by formula — an earlier version
- * of this whole face was tuned with the brows much higher, and a screenshot
- * taken at the corner between the front and side panels (where a squircle
- * head's flat faces meet, the one angle that shows both the eye edge-on and
- * the ear at once) showed a wide bare strip between the cap's old edge and
- * the ear: this piece is sized to close exactly that gap. Centred at temple
- * depth (z between the eye's -0.233 and the ear's +0.01) so it reads as hair
- * coming down the side of the head, not a growth sprouting off the ear itself.
+ * Short hair: crown down to about ear/nape depth all round.
  */
-export const hairTempleGeometry = superellipsoid({ x: 0.058, y: 0.115, z: 0.068 }, 2.6, 14, 12);
-export const HAIR_TEMPLES: [number, number, number][] = [
-  [0.232, 0.055, -0.145],
-  [-0.232, 0.055, -0.145],
-];
-/**
- * Short hair still needs to cover the sides and the nape, not just the front
- * temples — `hairCapGeometry` is a uniform-latitude cutoff, so its 1.14 rad
- * edge sits just as high round the BACK of the head as it does up front,
- * leaving the whole nape bare. This wraps everything except the face: same
- * phi gap as `hairLongGeometry` below (see its comment for the phi
- * convention), just a shallower theta so it reads as a short haircut ending
- * around the ear/nape rather than long hair down the back.
- *
- * Needs DoubleSide — the phi gap leaves two raw edges, same as the long-hair
- * shell.
- */
-export const hairNapeGeometry = superellipsoid(
-  { x: HEAD_HALF.x + 0.016, y: HEAD_HALF.y + 0.014, z: HEAD_HALF.z + 0.016 },
-  4.2,
-  32,
-  22,
-  0,
-  1.7,
-  Math.PI * 0.5 - Math.PI * 0.62,
-  Math.PI * 1.24
-);
-/**
- * Length down the back and sides for long hair, with a gap left for the face.
- *
- * Getting the gap in the right place needs three's actual phi convention, not
- * the obvious guess. SphereGeometry lays out
- *   x = -r·cos(phi)·sin(theta),  z = r·sin(phi)·sin(theta)
- * so phi = 0 is -X and the BACK of the head (+Z) is at phi = +π/2 — centring
- * the sweep on 0 (as a first version did) wraps hair over one cheek and leaves
- * the opening out to the side, burying half the face. Centred on π/2 and
- * spanning 1.24π, the 137° gap lands squarely on the face at -Z.
- *
- * Its material must be DoubleSide: the open sweep leaves two raw edges.
- */
-export const hairLongGeometry = superellipsoid(
-  { x: HEAD_HALF.x + 0.016, y: HEAD_HALF.y + 0.014, z: HEAD_HALF.z + 0.016 },
-  4.2,
-  32,
-  22,
-  0,
-  2.15,
-  Math.PI * 0.5 - Math.PI * 0.62,
-  Math.PI * 1.24
-);
+export const hairShortGeometry = hairShellGeometry(HAIR_HALF, 4.2, 32, 22, 1.14, 1.7);
+/** Long hair: same fringe up front, sweeping much further down the back. */
+export const hairLongGeometry = hairShellGeometry(HAIR_HALF, 4.2, 32, 22, 1.14, 2.15);
 /**
  * Masses that fall beside the jaw — the reference's centre-parted look. Kept
  * modest and set BEHIND the face plane (+z): at 0.075 x 0.2 and level with the

@@ -1,13 +1,12 @@
 <script lang="ts">
   import { T } from '@threlte/core';
-  import { DoubleSide, Euler, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
+  import { Euler, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
   import {
     BROWS,
     EAR_POSITIONS,
     EYES,
     LASHES,
     HAIR_SIDES,
-    HAIR_TEMPLES,
     HEAD_Y_STANDING,
     HIP_CENTRE_Y,
     HIP_X,
@@ -25,9 +24,7 @@
     earGeometry,
     eyeGeometry,
     lashGeometry,
-    hairCapGeometry,
-    hairTempleGeometry,
-    hairNapeGeometry,
+    hairShortGeometry,
     hairLongGeometry,
     hairSideGeometry,
     handGeometry,
@@ -79,10 +76,6 @@
   const SKIN = $derived(new MeshStandardMaterial({ color: skin, roughness: 0.78 }));
   const SHOE = $derived(new MeshStandardMaterial({ color: shoes, roughness: 0.85 }));
   const HAIR = $derived(new MeshStandardMaterial({ color: hair, roughness: 0.95 }));
-  /** The long-hair shell has an open sweep, so its raw edges need DoubleSide. */
-  const HAIR_OPEN = $derived(
-    new MeshStandardMaterial({ color: hair, roughness: 0.95, side: DoubleSide })
-  );
   const EYE = new MeshStandardMaterial({ color: '#141118', roughness: 0.32 });
   const MOUTH = new MeshStandardMaterial({ color: '#7c4634', roughness: 0.6 });
   const STRAW = new MeshStandardMaterial({ color: '#ddc890', roughness: 0.9 });
@@ -175,17 +168,13 @@
     <T.Mesh geometry={noseGeometry} material={SKIN} position={NOSE_POSITION} />
     <T.Mesh geometry={mouthGeometry} material={MOUTH} position={MOUTH_POSITION} />
 
-    <T.Mesh geometry={hairCapGeometry} material={HAIR} />
-    {#each HAIR_TEMPLES as pos, i (i)}
-      <T.Mesh geometry={hairTempleGeometry} material={HAIR} position={pos} />
-    {/each}
     {#if longHair}
-      <T.Mesh geometry={hairLongGeometry} material={HAIR_OPEN} />
+      <T.Mesh geometry={hairLongGeometry} material={HAIR} />
       {#each HAIR_SIDES as pos, i (i)}
         <T.Mesh geometry={hairSideGeometry} material={HAIR} position={pos} />
       {/each}
     {:else}
-      <T.Mesh geometry={hairNapeGeometry} material={HAIR_OPEN} />
+      <T.Mesh geometry={hairShortGeometry} material={HAIR} />
     {/if}
     {#if hat}
       <T.Mesh geometry={sombreroGeometry} material={STRAW} />

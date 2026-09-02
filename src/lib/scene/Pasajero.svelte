@@ -1,13 +1,12 @@
 <script lang="ts">
   import { T, useTask } from '@threlte/core';
-  import { DoubleSide, Euler, Group, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
+  import { Euler, Group, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
   import {
     BROWS,
     EAR_POSITIONS,
     EYES,
     LASHES,
     HAIR_SIDES,
-    HAIR_TEMPLES,
     HEAD_Y_SEATED,
     MOUTH_POSITION,
     NECK_Y_SEATED,
@@ -21,9 +20,7 @@
     eyeGeometry,
     lashGeometry,
     hairLongGeometry,
-    hairCapGeometry,
-    hairTempleGeometry,
-    hairNapeGeometry,
+    hairShortGeometry,
     hairSideGeometry,
     handGeometry,
     headGeometry,
@@ -68,13 +65,6 @@
   const pick = <T,>(arr: T[]) => arr[Math.abs(Math.round(IDLE_PHASE * 7)) % arr.length];
   const HAIR_COLOUR = pick(HAIR_TONES);
   const HAIR = new MeshStandardMaterial({ color: HAIR_COLOUR, roughness: 0.95 });
-  /** The long-hair shell has an open phi sweep, so its two raw edges need
-   *  DoubleSide or you can see straight through the head from behind. */
-  const HAIR_OPEN = new MeshStandardMaterial({
-    color: HAIR_COLOUR,
-    roughness: 0.95,
-    side: DoubleSide,
-  });
   const longHair = Math.round(IDLE_PHASE * 7) % 2 === 0;
   // Sleeve length rotates off the same phase, so a benchful of passengers is
   // not four people in identical shirts.
@@ -182,11 +172,7 @@
       <T.Mesh geometry={mouthGeometry} material={MOUTH} position={MOUTH_POSITION} />
 
       {#if hat}
-        <T.Mesh geometry={hairCapGeometry} material={HAIR} />
-        {#each HAIR_TEMPLES as pos, i (i)}
-          <T.Mesh geometry={hairTempleGeometry} material={HAIR} position={pos} />
-        {/each}
-        <T.Mesh geometry={hairNapeGeometry} material={HAIR_OPEN} />
+        <T.Mesh geometry={hairShortGeometry} material={HAIR} />
         <T.Mesh geometry={sombreroGeometry} material={STRAW} castShadow />
         <T.Mesh
           geometry={sombreroBandGeometry}
@@ -195,20 +181,12 @@
           rotation={[-Math.PI / 2, 0, 0]}
         />
       {:else if longHair}
-        <T.Mesh geometry={hairCapGeometry} material={HAIR} />
-        {#each HAIR_TEMPLES as pos, i (i)}
-          <T.Mesh geometry={hairTempleGeometry} material={HAIR} position={pos} />
-        {/each}
-        <T.Mesh geometry={hairLongGeometry} material={HAIR_OPEN} />
+        <T.Mesh geometry={hairLongGeometry} material={HAIR} />
         {#each HAIR_SIDES as pos, i (i)}
           <T.Mesh geometry={hairSideGeometry} material={HAIR} position={pos} />
         {/each}
       {:else}
-        <T.Mesh geometry={hairCapGeometry} material={HAIR} />
-        {#each HAIR_TEMPLES as pos, i (i)}
-          <T.Mesh geometry={hairTempleGeometry} material={HAIR} position={pos} />
-        {/each}
-        <T.Mesh geometry={hairNapeGeometry} material={HAIR_OPEN} />
+        <T.Mesh geometry={hairShortGeometry} material={HAIR} />
       {/if}
     </T.Group>
   </T.Group>
