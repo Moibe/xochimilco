@@ -252,7 +252,7 @@ export type Sleeves = 'none' | 'short' | 'long';
 /** How far down the shoulder-to-hand line each sleeve reaches. */
 export const SLEEVE_REACH: Record<Exclude<Sleeves, 'none'>, number> = {
   short: 0.46,
-  long: 0.84,
+  long: 0.95,
 };
 
 /**
