@@ -263,11 +263,22 @@ export const SLEEVE_REACH: Record<Exclude<Sleeves, 'none'>, number> = {
  *
  * Centred on its own origin (spanning y ±0.088) so each pose can drop it at
  * whatever hip height it has — standing and seated sit at very different ones.
+ *
+ * Listed BOTTOM to TOP, like every other lathe here — LatheGeometry derives
+ * each ring's normal from the direction to the NEXT point (`dy, -dx` in the
+ * profile plane), which only comes out pointing outward if the profile climbs
+ * as it goes. This one used to run top to bottom, the one profile in the file
+ * built backwards: every normal pointed inward, so FrontSide culled the whole
+ * outward-facing surface. From most angles that read as fine — the leg mesh
+ * sitting right behind/inside it papered over the hole with the same colour —
+ * but from square behind, where the hip pokes out past the legs, you could
+ * see straight through the seat to the backdrop. Looked exactly like
+ * transparency; it was an inside-out mesh.
  */
 export const hipGeometry = new LatheGeometry(
   profile([
-    [0.0, 0.088], [0.09, 0.088], [0.115, 0.078], [0.148, 0.058], [0.168, 0.025],
-    [0.174, -0.02], [0.168, -0.05], [0.14, -0.078], [0.08, -0.095], [0.0, -0.1],
+    [0.0, -0.1], [0.08, -0.095], [0.14, -0.078], [0.168, -0.05], [0.174, -0.02],
+    [0.168, 0.025], [0.148, 0.058], [0.115, 0.078], [0.09, 0.088], [0.0, 0.088],
   ]),
   26
 );
@@ -279,11 +290,16 @@ export const hipGeometry = new LatheGeometry(
  *
  * Built centred on the origin and 0.333 long overall, matching the capsule it
  * replaces, so every existing `poseLimb(..., 0.332)` call still scales it right.
+ *
+ * Also listed bottom to top now, for the same reason as `hipGeometry` above —
+ * it had the identical inversion, just never caught: a leg's own silhouette
+ * has nowhere for the eye to see "through" to a backdrop the way the hip's
+ * open seat did, so the same inside-out normals were invisible in practice.
  */
 export const legGeometry = new LatheGeometry(
   profile([
-    [0.0, 0.166], [0.048, 0.163], [0.072, 0.15], [0.075, 0.1], [0.073, 0.02],
-    [0.069, -0.06], [0.065, -0.12], [0.06, -0.15], [0.042, -0.163], [0.0, -0.167],
+    [0.0, -0.167], [0.042, -0.163], [0.06, -0.15], [0.065, -0.12], [0.069, -0.06],
+    [0.073, 0.02], [0.075, 0.1], [0.072, 0.15], [0.048, 0.163], [0.0, 0.166],
   ]),
   22
 );
