@@ -147,10 +147,10 @@ export const LASHES: { pos: [number, number, number]; rotZ: number }[] = [
 // reading as a brow and starts reading as a painted stripe.
 export const browGeometry = superellipsoid({ x: 0.055, y: 0.015, z: 0.019 }, 3.0, 16, 10);
 export const BROWS: { pos: [number, number, number]; rotZ: number }[] = [
-  // Sits clear of the eye tops. Closer and the brow merges into the eye as one
-  // dark band; the reference faces keep a visible gap between them.
-  { pos: [0.098, 0.085, -0.237], rotZ: -0.1 },
-  { pos: [-0.098, 0.085, -0.237], rotZ: 0.1 },
+  // Pulled down to nearly contour the eye's top curve on purpose — see the
+  // module doc: this hands the freed-up forehead space to the hair.
+  { pos: [0.098, 0.045, -0.237], rotZ: -0.1 },
+  { pos: [-0.098, 0.045, -0.237], rotZ: 0.1 },
 ];
 
 /** The button nose — small, central, and the thing that says "vinyl toy". */
