@@ -32,7 +32,9 @@
   }
   :global(body) {
     min-height: 100vh;
-    background: linear-gradient(135deg, #38bdf8 0%, #c2410c 100%);
+    /* Naranja sólido. Es el mismo tono que ya cerraba el gradiente, así que
+       las barras glass y sus bordes siguen contrastando igual que antes. */
+    background: #c2410c;
     background-attachment: fixed;
     color: rgba(255, 255, 255, 0.95);
     font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
