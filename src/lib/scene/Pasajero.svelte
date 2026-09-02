@@ -1,6 +1,6 @@
 <script lang="ts">
   import { T, useTask } from '@threlte/core';
-  import { Euler, Group, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
+  import { Euler, Group, Matrix4, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
   import {
     BROWS,
     EAR_POSITIONS,
@@ -25,6 +25,7 @@
     handGeometry,
     headGeometry,
     legGeometry,
+    mergeGeometries,
     mouthGeometry,
     noseGeometry,
     shoeGeometry,
@@ -82,13 +83,14 @@
   function poseLimb(from: Vector3, to: Vector3, restLength: number) {
     const dir = new Vector3().subVectors(to, from);
     const mid = new Vector3().addVectors(from, to).multiplyScalar(0.5);
-    const e = new Euler().setFromQuaternion(
-      new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir.clone().normalize())
-    );
+    const quat = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir.clone().normalize());
+    const e = new Euler().setFromQuaternion(quat);
+    const scale = new Vector3(1, dir.length() / restLength, 1);
     return {
       position: [mid.x, mid.y, mid.z] as [number, number, number],
       rotation: [e.x, e.y, e.z] as [number, number, number],
-      scale: [1, dir.length() / restLength, 1] as [number, number, number],
+      scale: [scale.x, scale.y, scale.z] as [number, number, number],
+      matrix: new Matrix4().compose(mid, quat, scale),
     };
   }
 
@@ -99,6 +101,14 @@
   const thighL = poseLimb(new Vector3(0, 0.31, -0.095), new Vector3(-0.3, 0.29, -0.1), 0.332);
   const shinR = poseLimb(new Vector3(-0.3, 0.29, 0.1), new Vector3(-0.33, 0.09, 0.1), 0.332);
   const shinL = poseLimb(new Vector3(-0.3, 0.29, -0.1), new Vector3(-0.33, 0.09, -0.1), 0.332);
+  // One mesh for both legs, not four separately-posed capsules — see
+  // mergeGeometries in chibi.ts.
+  const legsGeometry = mergeGeometries([
+    { geometry: legGeometry, matrix: thighR.matrix },
+    { geometry: legGeometry, matrix: thighL.matrix },
+    { geometry: legGeometry, matrix: shinR.matrix },
+    { geometry: legGeometry, matrix: shinL.matrix },
+  ]);
 
   // Arms hang from the shoulders into the lap. Facing -X puts the shoulder
   // line along Z.
@@ -135,10 +145,7 @@
 <T.Group bind:ref={group}>
   <T.Mesh geometry={torsoSeatedGeometry} material={SHIRT} castShadow />
 
-  <T.Mesh geometry={legGeometry} material={PANTS} position={thighR.position} rotation={thighR.rotation} scale={thighR.scale} />
-  <T.Mesh geometry={legGeometry} material={PANTS} position={thighL.position} rotation={thighL.rotation} scale={thighL.scale} />
-  <T.Mesh geometry={legGeometry} material={PANTS} position={shinR.position} rotation={shinR.rotation} scale={shinR.scale} />
-  <T.Mesh geometry={legGeometry} material={PANTS} position={shinL.position} rotation={shinL.rotation} scale={shinL.scale} />
+  <T.Mesh geometry={legsGeometry} material={PANTS} />
   <T.Mesh geometry={shoeGeometry} material={SHOE} position={[-0.37, 0.05, 0.1]} rotation={[0, Math.PI / 2, 0]} />
   <T.Mesh geometry={shoeGeometry} material={SHOE} position={[-0.37, 0.05, -0.1]} rotation={[0, Math.PI / 2, 0]} />
 

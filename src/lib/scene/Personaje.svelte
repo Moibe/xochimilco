@@ -1,6 +1,6 @@
 <script lang="ts">
   import { T } from '@threlte/core';
-  import { Euler, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
+  import { Euler, Matrix4, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
   import {
     BROWS,
     EAR_POSITIONS,
@@ -31,6 +31,7 @@
     hipGeometry,
     headGeometry,
     legGeometry,
+    mergeGeometries,
     mouthGeometry,
     noseGeometry,
     shoeGeometry,
@@ -85,13 +86,14 @@
   function poseLimb(from: Vector3, to: Vector3, restLength: number) {
     const dir = new Vector3().subVectors(to, from);
     const mid = new Vector3().addVectors(from, to).multiplyScalar(0.5);
-    const e = new Euler().setFromQuaternion(
-      new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir.clone().normalize())
-    );
+    const quat = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir.clone().normalize());
+    const e = new Euler().setFromQuaternion(quat);
+    const scale = new Vector3(1, dir.length() / restLength, 1);
     return {
       position: [mid.x, mid.y, mid.z] as [number, number, number],
       rotation: [e.x, e.y, e.z] as [number, number, number],
-      scale: [1, dir.length() / restLength, 1] as [number, number, number],
+      scale: [scale.x, scale.y, scale.z] as [number, number, number],
+      matrix: new Matrix4().compose(mid, quat, scale),
     };
   }
 
@@ -132,12 +134,17 @@
 
   const legR = poseLimb(new Vector3(HIP_X, HIP_Y, 0), new Vector3(HIP_X, 0.095, 0), 0.332);
   const legL = poseLimb(new Vector3(-HIP_X, HIP_Y, 0), new Vector3(-HIP_X, 0.095, 0), 0.332);
+  // One mesh, not a hip piece and two legs kept looking joined by careful
+  // sizing — see mergeGeometries in chibi.ts.
+  const pantsGeometry = mergeGeometries([
+    { geometry: hipGeometry, matrix: new Matrix4().makeTranslation(0, HIP_CENTRE_Y, 0) },
+    { geometry: legGeometry, matrix: legR.matrix },
+    { geometry: legGeometry, matrix: legL.matrix },
+  ]);
 </script>
 
 <T.Group>
-  <T.Mesh geometry={hipGeometry} material={PANTS} position={[0, HIP_CENTRE_Y, 0]} />
-  <T.Mesh geometry={legGeometry} material={PANTS} position={legR.position} rotation={legR.rotation} scale={legR.scale} />
-  <T.Mesh geometry={legGeometry} material={PANTS} position={legL.position} rotation={legL.rotation} scale={legL.scale} />
+  <T.Mesh geometry={pantsGeometry} material={PANTS} />
   <T.Mesh geometry={shoeGeometry} material={SHOE} position={[HIP_X, 0.042, -0.02]} />
   <T.Mesh geometry={shoeGeometry} material={SHOE} position={[-HIP_X, 0.042, -0.02]} />
 

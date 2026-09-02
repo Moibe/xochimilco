@@ -4,9 +4,12 @@ import {
   CylinderGeometry,
   Float32BufferAttribute,
   LatheGeometry,
+  Matrix3,
+  Matrix4,
   SphereGeometry,
   TorusGeometry,
   Vector2,
+  Vector3,
 } from 'three';
 
 /**
@@ -76,6 +79,52 @@ export function superellipsoid(
   }
   pos.needsUpdate = true;
   geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Concatenates several geometries into one, baking in a per-part transform
+ * first. Used to turn what would otherwise be several separately-posed
+ * meshes — a hip piece plus two legs, kept looking joined only by sizing one
+ * to sit flush inside the other rather than by any real connection — into a
+ * single mesh, the same reasoning as the one-piece hair shell above. Each
+ * source geometry must already carry computed normals (every lathe and
+ * superellipsoid here does).
+ */
+export function mergeGeometries(
+  parts: { geometry: BufferGeometry; matrix?: Matrix4 }[]
+): BufferGeometry {
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const indices: number[] = [];
+  const normalMatrix = new Matrix3();
+  const v = new Vector3();
+  const n = new Vector3();
+  let base = 0;
+  for (const { geometry, matrix } of parts) {
+    const posAttr = geometry.getAttribute('position');
+    const normAttr = geometry.getAttribute('normal');
+    if (matrix) normalMatrix.getNormalMatrix(matrix);
+    for (let i = 0; i < posAttr.count; i++) {
+      v.fromBufferAttribute(posAttr, i);
+      if (matrix) v.applyMatrix4(matrix);
+      positions.push(v.x, v.y, v.z);
+      n.fromBufferAttribute(normAttr, i);
+      if (matrix) n.applyMatrix3(normalMatrix).normalize();
+      normals.push(n.x, n.y, n.z);
+    }
+    const index = geometry.getIndex();
+    if (index) {
+      for (let i = 0; i < index.count; i++) indices.push(index.getX(i) + base);
+    } else {
+      for (let i = 0; i < posAttr.count; i++) indices.push(i + base);
+    }
+    base += posAttr.count;
+  }
+  const geo = new BufferGeometry();
+  geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  geo.setAttribute('normal', new Float32BufferAttribute(normals, 3));
+  geo.setIndex(indices);
   return geo;
 }
 
