@@ -4,6 +4,7 @@
   import { Vector3 } from 'three';
   import type { PerspectiveCamera } from 'three';
   import type { OrbitControls as OrbitControlsImpl } from 'three/examples/jsm/controls/OrbitControls.js';
+  import Ajolote from './Ajolote.svelte';
   import Lake from './Lake.svelte';
   import Lirios from './Lirios.svelte';
   import Ripples from './Ripples.svelte';
@@ -109,4 +110,5 @@
 <Lake sun={SUN} />
 <Lirios />
 <Ripples />
+<Ajolote />
 <Trajinera {name} {hullColor} />
