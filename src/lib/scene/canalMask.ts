@@ -107,6 +107,7 @@ export function buildCanalMask(strokes: Stroke[]) {
   canalMask.texture = texture;
   canalMask.hasMap = true;
   canalMask.version += 1;
+  refloatBoat();
 }
 
 /**
@@ -162,5 +163,55 @@ function applySavedBoat(data: unknown) {
   boat.x = d.boat.x;
   boat.z = d.boat.z;
   boat.heading = d.boat.heading;
+  boat.speed = 0;
+  refloatBoat();
+}
+
+/**
+ * The nearest water to a point, searched in rings outward. Returns null if
+ * there is none within `maxRadius` -- 45 m is a bit over three canal widths,
+ * so failing that, the point was not "next to a canal", it was inland.
+ */
+export function nearestWater(
+  wx: number,
+  wz: number,
+  maxRadius = 45
+): { x: number; z: number } | null {
+  if (!isLand(wx, wz)) return { x: wx, z: wz };
+  for (let r = 2; r <= maxRadius; r += 2) {
+    const steps = Math.max(8, Math.round((2 * Math.PI * r) / 3));
+    for (let i = 0; i < steps; i++) {
+      const a = (i / steps) * Math.PI * 2;
+      const x = wx + Math.cos(a) * r;
+      const z = wz + Math.sin(a) * r;
+      if (!isLand(x, z)) return { x, z };
+    }
+  }
+  return null;
+}
+
+/**
+ * Make sure she is floating, and refloat her if she is not.
+ *
+ * A trajinera sitting on land is FROZEN, not merely slow: the hull's collision
+ * refuses every move, so neither the arrow keys nor the autopilot can get her
+ * off, and there is no in-app way back. Three ways she can end up there, all
+ * real: her default spawn is the world origin, which is land unless a canal
+ * happens to cross the middle of the map; a saved placement can outlive the
+ * canal it was made in; and you can paint Tierra straight over wherever she
+ * is floating. So this runs after every rebuild of the mask rather than only
+ * at load.
+ */
+export function refloatBoat() {
+  if (!canalMask.hasMap || !isLand(boat.x, boat.z)) return;
+  // Searches the WHOLE map, not the 45 m a misplaced click gets. The two cases
+  // want opposite defaults: a click far inland is a mis-click and is better
+  // ignored, but a boat already stranded has no way out at all, so however far
+  // the water is, moving her there beats leaving her frozen. This only runs
+  // when she is actually aground, so the wide search costs nothing normally.
+  const water = nearestWater(boat.x, boat.z, 600);
+  if (!water) return; // genuinely nowhere to float her; leave her be
+  boat.x = water.x;
+  boat.z = water.z;
   boat.speed = 0;
 }

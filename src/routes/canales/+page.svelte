@@ -16,6 +16,7 @@
     type Stroke,
   } from '$lib/canales';
   import { boat, boatForward } from '$lib/scene/boat';
+  import { buildCanalMask, isLand, nearestWater } from '$lib/scene/canalMask';
 
   /**
    * El mapa de los canales, y el timón de la trajinera.
@@ -154,9 +155,21 @@
     };
   }
 
-  /** Mueve la trajinera del mundo 3D a este punto del mapa. */
+  /**
+   * Mueve la trajinera del mundo 3D a este punto del mapa.
+   *
+   * Si sueltas sobre tierra, busca el agua más cercana en vez de dejarla ahí:
+   * una trajinera en tierra queda CONGELADA — la colisión bloquea todos sus
+   * movimientos, así que no puede salir ni con el piloto ni con las flechas.
+   * Antes se podía hacer con un clic en el verde, sin ningún aviso.
+   */
   function placeBoat(mx: number, my: number) {
-    const w = mapToWorld(mx, my);
+    let w = mapToWorld(mx, my);
+    if (isLand(w.x, w.z)) {
+      const found = nearestWater(w.x, w.z);
+      if (!found) return; // nada de agua cerca: mejor no moverla a una trampa
+      w = found;
+    }
     boat.x = w.x;
     boat.z = w.z;
     // Sin esto llegaría al lugar nuevo todavía navegando a la velocidad que
@@ -183,6 +196,10 @@
     } catch {
       // Sin almacenamiento (modo privado, etc.): el servidor sigue guardando.
     }
+    // La máscara se reconstruye con cada guardado: es lo que hace que `isLand`
+    // sea real en ESTA página (antes solo la construía la vista del lago), y de
+    // paso el mundo 3D queda al día sin esperar a recargarlo.
+    buildCanalMask(strokes);
     fetch('/api/canales', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -332,6 +349,7 @@
     layout();
     load().then(() => {
       strokeCount = strokes.length;
+      buildCanalMask(strokes);
       redrawWorld();
       drawView();
     });
