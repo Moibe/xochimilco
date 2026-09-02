@@ -11,6 +11,7 @@
   import {
     ARM_MAX,
     BROWS,
+    EAR_POSITIONS,
     EYES,
     LASHES,
     HEAD_Y_STANDING,
@@ -27,6 +28,7 @@
     SOMBRERO_BAND_Y,
     armGeometry,
     browGeometry,
+    earGeometry,
     eyeGeometry,
     lashGeometry,
     handGeometry,
@@ -218,6 +220,9 @@
            head-centred, so it serves the seated build unchanged. -->
       <T.Group position={[0, HEAD_Y_STANDING - NECK_Y_STANDING, 0]}>
         <T.Mesh geometry={headGeometry} material={SKIN} castShadow />
+        {#each EAR_POSITIONS as pos, i (i)}
+          <T.Mesh geometry={earGeometry} material={SKIN} position={pos} />
+        {/each}
         {#each EYES as eye, i (i)}
           <T.Mesh geometry={eyeGeometry} material={EYE} position={eye.pos} rotation={[0, 0, eye.rotZ]} />
         {/each}

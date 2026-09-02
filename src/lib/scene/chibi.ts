@@ -80,6 +80,30 @@ export function superellipsoid(
 
 export const headGeometry = superellipsoid(HEAD_HALF);
 
+/**
+ * Ears. Verified against the live render, not just placed by formula: the
+ * head's own surface sits at x ≈ 0.26 near ear height (y, z are both tiny
+ * there relative to the head's half-extents, so the squircle is still nearly
+ * at full width). A first pass centred the ear at x = 0.235, poking out only
+ * ~0.011 m past that surface — geometrically an ear, but rendered so subtle
+ * that ONE side's highlight caught it and the other side's didn't, reading as
+ * a missing ear rather than a dim one. Logged both ears' real world positions
+ * to confirm there truly were two symmetric meshes before touching anything —
+ * there were; the fix was making the bump itself bigger, not chasing a
+ * one-sided-rendering bug that didn't exist.
+ *
+ * Centred a little inside the head's own surface on purpose, still: that's
+ * what reads as ATTACHED. Centred exactly on the surface reads as a coin
+ * glued to a wall; floating outside it reads as a handle. Positioned at ear
+ * height (between the eyes and the nose), the same on every build since the
+ * head geometry itself never changes between poses.
+ */
+export const earGeometry = superellipsoid({ x: 0.044, y: 0.07, z: 0.052 }, 2.3, 16, 12);
+export const EAR_POSITIONS: [number, number, number][] = [
+  [0.248, -0.02, 0.01],
+  [-0.248, -0.02, 0.01],
+];
+
 // ---- the face, head-centred. The kit faces -Z. ------------------------------
 // The face is nearly flat out to ~40% of the half-width (that is the point of
 // the squircle), so everything below sits just proud of z = -0.244 and can

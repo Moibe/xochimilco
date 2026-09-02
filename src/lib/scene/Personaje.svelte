@@ -3,6 +3,7 @@
   import { DoubleSide, Euler, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
   import {
     BROWS,
+    EAR_POSITIONS,
     EYES,
     LASHES,
     HAIR_SIDES,
@@ -20,6 +21,7 @@
     SOMBRERO_BAND_Y,
     armGeometry,
     browGeometry,
+    earGeometry,
     eyeGeometry,
     lashGeometry,
     hairCapGeometry,
@@ -155,6 +157,9 @@
 
   <T.Group position={[0, HEAD_Y_STANDING, 0]}>
     <T.Mesh geometry={headGeometry} material={SKIN} />
+    {#each EAR_POSITIONS as pos, i (i)}
+      <T.Mesh geometry={earGeometry} material={SKIN} position={pos} />
+    {/each}
     {#each EYES as eye, i (i)}
       <T.Mesh geometry={eyeGeometry} material={EYE} position={eye.pos} rotation={[0, 0, eye.rotZ]} />
     {/each}
