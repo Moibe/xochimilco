@@ -7,6 +7,7 @@
     EYES,
     LASHES,
     HAIR_SIDES,
+    HAIR_TEMPLES,
     HEAD_Y_STANDING,
     HIP_CENTRE_Y,
     HIP_X,
@@ -25,6 +26,7 @@
     eyeGeometry,
     lashGeometry,
     hairCapGeometry,
+    hairTempleGeometry,
     hairLongGeometry,
     hairSideGeometry,
     handGeometry,
@@ -173,6 +175,9 @@
     <T.Mesh geometry={mouthGeometry} material={MOUTH} position={MOUTH_POSITION} />
 
     <T.Mesh geometry={hairCapGeometry} material={HAIR} />
+    {#each HAIR_TEMPLES as pos, i (i)}
+      <T.Mesh geometry={hairTempleGeometry} material={HAIR} position={pos} />
+    {/each}
     {#if longHair}
       <T.Mesh geometry={hairLongGeometry} material={HAIR_OPEN} />
       {#each HAIR_SIDES as pos, i (i)}

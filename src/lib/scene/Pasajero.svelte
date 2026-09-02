@@ -7,6 +7,7 @@
     EYES,
     LASHES,
     HAIR_SIDES,
+    HAIR_TEMPLES,
     HEAD_Y_SEATED,
     MOUTH_POSITION,
     NECK_Y_SEATED,
@@ -21,6 +22,7 @@
     lashGeometry,
     hairLongGeometry,
     hairCapGeometry,
+    hairTempleGeometry,
     hairSideGeometry,
     handGeometry,
     headGeometry,
@@ -180,6 +182,9 @@
 
       {#if hat}
         <T.Mesh geometry={hairCapGeometry} material={HAIR} />
+        {#each HAIR_TEMPLES as pos, i (i)}
+          <T.Mesh geometry={hairTempleGeometry} material={HAIR} position={pos} />
+        {/each}
         <T.Mesh geometry={sombreroGeometry} material={STRAW} castShadow />
         <T.Mesh
           geometry={sombreroBandGeometry}
@@ -189,12 +194,18 @@
         />
       {:else if longHair}
         <T.Mesh geometry={hairCapGeometry} material={HAIR} />
+        {#each HAIR_TEMPLES as pos, i (i)}
+          <T.Mesh geometry={hairTempleGeometry} material={HAIR} position={pos} />
+        {/each}
         <T.Mesh geometry={hairLongGeometry} material={HAIR_OPEN} />
         {#each HAIR_SIDES as pos, i (i)}
           <T.Mesh geometry={hairSideGeometry} material={HAIR} position={pos} />
         {/each}
       {:else}
         <T.Mesh geometry={hairCapGeometry} material={HAIR} />
+        {#each HAIR_TEMPLES as pos, i (i)}
+          <T.Mesh geometry={hairTempleGeometry} material={HAIR} position={pos} />
+        {/each}
       {/if}
     </T.Group>
   </T.Group>

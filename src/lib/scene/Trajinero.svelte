@@ -13,6 +13,7 @@
     BROWS,
     EAR_POSITIONS,
     EYES,
+    HAIR_TEMPLES,
     LASHES,
     HEAD_Y_STANDING,
     HIP_CENTRE_Y,
@@ -34,6 +35,7 @@
     handGeometry,
     hipGeometry,
     hairCapGeometry,
+    hairTempleGeometry,
     headGeometry,
     legGeometry,
     mouthGeometry,
@@ -236,6 +238,9 @@
         <T.Mesh geometry={mouthGeometry} material={MOUTH} position={MOUTH_POSITION} />
         <!-- Sombrero over cropped hair. -->
         <T.Mesh geometry={hairCapGeometry} material={HAIR} />
+        {#each HAIR_TEMPLES as pos, i (i)}
+          <T.Mesh geometry={hairTempleGeometry} material={HAIR} position={pos} />
+        {/each}
         <T.Mesh geometry={sombreroGeometry} material={STRAW} castShadow />
         <T.Mesh
           geometry={sombreroBandGeometry}

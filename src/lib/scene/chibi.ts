@@ -177,10 +177,11 @@ export const MOUTH_POSITION: [number, number, number] = [0, -0.138, -0.238];
 
 // ---- hair ------------------------------------------------------------------
 /**
- * A shell over the crown, cut just ABOVE the brows. Its rim lands at head-y
- * +0.129 against brow tops at +0.122 — that gap is the whole margin, and closing it
- * hides the face. Full 360°, which is safe precisely because it stops above
- * every feature.
+ * A shell over the crown, cut at a fixed latitude — safe from the face
+ * because it stops well above every feature, but for exactly that reason it
+ * reads as a helmet sitting ON the head rather than hair growing FROM it: a
+ * real hairline comes down the temples toward the ear, and a uniform cutoff
+ * can't do that on its own (see `hairTempleGeometry` below, which does).
  */
 export const hairCapGeometry = superellipsoid(
   { x: HEAD_HALF.x + 0.014, y: HEAD_HALF.y + 0.012, z: HEAD_HALF.z + 0.014 },
@@ -190,6 +191,25 @@ export const hairCapGeometry = superellipsoid(
   0,
   1.14
 );
+/**
+ * The sideburn/temple: bridges the cap's edge down toward the ear, which the
+ * cap's own uniform-latitude cutoff can never do (revolving a single theta
+ * value gives the same height all the way round, front, back AND sides).
+ *
+ * Measured against a real render, not placed by formula — an earlier version
+ * of this whole face was tuned with the brows much higher, and a screenshot
+ * taken at the corner between the front and side panels (where a squircle
+ * head's flat faces meet, the one angle that shows both the eye edge-on and
+ * the ear at once) showed a wide bare strip between the cap's old edge and
+ * the ear: this piece is sized to close exactly that gap. Centred at temple
+ * depth (z between the eye's -0.233 and the ear's +0.01) so it reads as hair
+ * coming down the side of the head, not a growth sprouting off the ear itself.
+ */
+export const hairTempleGeometry = superellipsoid({ x: 0.058, y: 0.115, z: 0.068 }, 2.6, 14, 12);
+export const HAIR_TEMPLES: [number, number, number][] = [
+  [0.232, 0.055, -0.145],
+  [-0.232, 0.055, -0.145],
+];
 /**
  * Length down the back and sides for long hair, with a gap left for the face.
  *
